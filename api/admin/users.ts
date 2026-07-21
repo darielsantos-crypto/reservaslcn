@@ -34,7 +34,8 @@ export default async function handler(req: any, res: any) {
     .eq('id', userData.user.id)
     .maybeSingle();
 
-  if (actorError || !actor || !actor.active || !['gestao_viagens', 'super_admin'].includes(actor.role)) {
+  const actorRole = actor?.role === 'superadmin' || actor?.role === 'admin' ? 'super_admin' : actor?.role;
+  if (actorError || !actor || !actor.active || !['gestao_viagens', 'super_admin'].includes(actorRole)) {
     return json(res, 403, { error: 'Você não possui permissão para gerenciar usuários.' });
   }
 
@@ -44,7 +45,7 @@ export default async function handler(req: any, res: any) {
     if (!body.email || !body.password || !body.full_name) {
       return json(res, 400, { error: 'Nome, e-mail e senha temporária são obrigatórios.' });
     }
-    if (role === 'super_admin' && actor.role !== 'super_admin') {
+    if (role === 'super_admin' && actorRole !== 'super_admin') {
       return json(res, 403, { error: 'Somente o Super Administrador pode criar outro Super Administrador.' });
     }
 
@@ -55,27 +56,33 @@ export default async function handler(req: any, res: any) {
       user_metadata: { full_name: body.full_name },
     });
     if (createError || !created.user) {
-      return json(res, 400, { error: createError?.message ?? 'Não foi possível criar o usuário.' });
+      return json(res, 400, { error: createError?.message ?? 'Não foi possível criar o usuário no Supabase Auth.', stage: 'auth.createUser' });
     }
 
+    const normalizedEmail = String(created.user.email ?? body.email).trim().toLowerCase();
     const { error: profileError } = await admin.from('profiles').upsert({
       id: created.user.id,
+      name: body.full_name,
+      login: normalizedEmail.split('@')[0],
       full_name: body.full_name,
       registration: body.registration || null,
-      email: created.user.email,
+      matricula: body.registration || null,
+      email: normalizedEmail,
+      password_hash: 'SUPABASE_AUTH',
       phone: body.phone || null,
       position: body.position || null,
+      job_title: body.position || null,
       city: body.city || null,
       state: body.state || null,
       role,
       active: true,
       created_by: actor.id,
       updated_at: new Date().toISOString(),
-    });
+    }, { onConflict: 'id' });
 
     if (profileError) {
       await admin.auth.admin.deleteUser(created.user.id);
-      return json(res, 400, { error: profileError.message });
+      return json(res, 400, { error: `Usuário criado no Auth, mas o perfil falhou: ${profileError.message}`, stage: 'profiles.upsert' });
     }
 
     if (Array.isArray(body.worksiteIds) && body.worksiteIds.length) {
@@ -89,7 +96,7 @@ export default async function handler(req: any, res: any) {
 
   const userId = String(req.query?.id ?? req.body?.id ?? '');
   if (!userId) return json(res, 400, { error: 'Usuário não informado.' });
-  if (actor.role !== 'super_admin') {
+  if (actorRole !== 'super_admin') {
     return json(res, 403, { error: 'Somente o Super Administrador pode excluir usuários.' });
   }
   if (userId === actor.id) return json(res, 400, { error: 'Você não pode excluir o próprio usuário.' });

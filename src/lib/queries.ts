@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { normalizeProfile } from './profile';
 import type {
   TravelRequest,
   TravelSegment,
@@ -197,6 +198,6 @@ export async function fetchWorksitesAll(): Promise<Worksite[]> {
 }
 
 export async function fetchProfiles(): Promise<Profile[]> {
-  const { data } = await supabase.from('profiles').select('*').order('full_name');
-  return (data ?? []) as Profile[];
+  const { data } = await supabase.from('profiles').select('*').order('name');
+  return (data ?? []).map((row) => normalizeProfile(row as Record<string, unknown>)).filter(Boolean) as Profile[];
 }

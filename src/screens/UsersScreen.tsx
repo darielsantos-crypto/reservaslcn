@@ -27,7 +27,7 @@ export function UsersScreen() {
 
   async function load() {
     const [p, w] = await Promise.all([
-      supabase.from('profiles').select('*').order('full_name'),
+      supabase.from('profiles').select('*').order('name'),
       supabase.from('worksites').select('*').order('name'),
     ]);
     setRows((p.data ?? []) as Profile[]);
@@ -47,7 +47,13 @@ export function UsersScreen() {
     if (!profile) return;
     if (editing) {
       const { password: _password, worksiteIds: _worksiteIds, ...profileFields } = form;
-      await supabase.from('profiles').update({ ...profileFields, updated_at: new Date().toISOString() }).eq('id', editing.id);
+      await supabase.from('profiles').update({
+        ...profileFields,
+        name: profileFields.full_name,
+        matricula: profileFields.registration || null,
+        job_title: profileFields.position || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', editing.id);
     } else {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;

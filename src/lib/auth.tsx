@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { Profile } from './types';
+import { normalizeProfile } from './profile';
 
 interface AuthContextValue {
   session: Session | null;
@@ -21,23 +22,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(uid: string) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', uid)
       .maybeSingle();
-    setProfile(data as Profile | null);
+
+    if (error) {
+      console.error('Erro ao carregar perfil:', error);
+      setProfile(null);
+      return { error: `Não foi possível carregar seu perfil: ${error.message}` };
+    }
+
+    const normalized = normalizeProfile(data as Record<string, unknown> | null);
+    setProfile(normalized);
+    if (!normalized) return { error: 'Conta autenticada, mas sem perfil vinculado ao sistema.' };
+    if (!normalized.active) return { error: 'Este usuário está inativo.' };
+    return { error: null };
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (data.session) {
-        loadProfile(data.session.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
+    supabase.auth.getSession()
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Erro ao restaurar sessão:', error);
+          setSession(null);
+          setProfile(null);
+          return;
+        }
+
+        setSession(data.session);
+        if (data.session) {
+          return loadProfile(data.session.user.id);
+        }
+      })
+      .catch((error) => {
+        console.error('Falha na inicialização da autenticação:', error);
+        setSession(null);
+        setProfile(null);
+      })
+      .finally(() => setLoading(false));
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
       (async () => {
@@ -55,8 +79,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    if (error) return { error: error.message };
+    if (!data.user) return { error: 'Não foi possível identificar o usuário autenticado.' };
+
+    const profileResult = await loadProfile(data.user.id);
+    if (profileResult.error) {
+      await supabase.auth.signOut();
+      return { error: profileResult.error };
+    }
+    return { error: null };
   }
 
   async function signUp(email: string, password: string, fullName: string) {
@@ -69,9 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (data.user) {
       await supabase.from('profiles').insert({
         id: data.user.id,
+        name: fullName,
+        login: email.split('@')[0],
         full_name: fullName,
         email,
         role: 'solicitante',
+        active: true,
       });
     }
     return { error: null };
