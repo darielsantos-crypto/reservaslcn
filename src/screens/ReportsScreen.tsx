@@ -54,8 +54,7 @@ export function ReportsScreen() {
       byWorksite[name] = (byWorksite[name] ?? 0) + 1;
     });
     const cancellations = filtered.filter((r) => r.status === 'cancelada').length;
-    const notAttended = filtered.filter((r) => r.status === 'nao_atendida').length;
-    return { total, outOfDeadline, withinPct, totalPassengers, totalValue, byWorksite, cancellations, notAttended };
+    return { total, outOfDeadline, withinPct, totalPassengers, totalValue, byWorksite, cancellations };
   }, [filtered]);
 
   function exportCSV() {
@@ -107,7 +106,7 @@ export function ReportsScreen() {
         <Metric label="Dentro do prazo" value={`${metrics.withinPct}%`} />
         <Metric label="Valor total" value={formatCurrency(metrics.totalValue)} />
         <Metric label="Cancelamentos" value={String(metrics.cancellations)} />
-        <Metric label="Não atendidas" value={String(metrics.notAttended)} />
+        <Metric label="Não atendidas" value={String(0)} />
         <Metric label="Fora do prazo" value={String(metrics.outOfDeadline)} />
       </div>
 

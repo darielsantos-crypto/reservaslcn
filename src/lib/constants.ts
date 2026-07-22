@@ -50,31 +50,21 @@ export const PURPOSE_LABELS: Record<string, string> = {
 
 export const STATUS_LABELS: Record<RequestStatus, string> = {
   rascunho: 'Rascunho',
-  enviada: 'Enviada',
-  aguardando_atendimento: 'Aguardando atendimento',
-  em_analise: 'Em análise',
-  aguardando_informacoes: 'Aguardando informações',
-  em_orcamento: 'Em orçamento',
-  em_negociacao: 'Em negociação',
-  em_compra: 'Em compra',
-  compra_realizada: 'Compra realizada',
-  finalizada: 'Finalizada',
-  nao_atendida: 'Não atendida',
-  cancelada: 'Cancelada',
+  pedido_recebido: 'Pedido recebido',
+  em_andamento: 'Em andamento',
+  orcado: 'Orçado',
+  aprovado: 'Aprovado',
+  finalizada: 'Finalizado',
+  cancelada: 'Cancelado',
 };
 
 export const STATUS_STYLES: Record<RequestStatus, string> = {
   rascunho: 'bg-gray-100 text-gray-700',
-  enviada: 'bg-blue-100 text-blue-800',
-  aguardando_atendimento: 'bg-amber-100 text-amber-800',
-  em_analise: 'bg-blue-100 text-blue-800',
-  aguardando_informacoes: 'bg-amber-100 text-amber-800',
-  em_orcamento: 'bg-blue-100 text-blue-800',
-  em_negociacao: 'bg-blue-100 text-blue-800',
-  em_compra: 'bg-blue-100 text-blue-800',
-  compra_realizada: 'bg-emerald-100 text-emerald-800',
-  finalizada: 'bg-gray-200 text-gray-700',
-  nao_atendida: 'bg-red-100 text-red-800',
+  pedido_recebido: 'bg-blue-100 text-blue-800',
+  em_andamento: 'bg-amber-100 text-amber-800',
+  orcado: 'bg-violet-100 text-violet-800',
+  aprovado: 'bg-emerald-100 text-emerald-800',
+  finalizada: 'bg-emerald-100 text-emerald-900',
   cancelada: 'bg-red-100 text-red-800',
 };
 

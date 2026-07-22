@@ -37,9 +37,10 @@ export const NAV_ITEMS: NavItem[] = [
 
   // Gestão de Viagens: uma fila única, sem menus repetidos por status.
   { id: 'panel', label: 'Painel', icon: LayoutDashboard, roles: ['gestao_viagens'] },
+  { id: 'new-request', label: 'Nova solicitação', icon: PlusCircle, roles: ['gestao_viagens'] },
+  { id: 'my-requests', label: 'Minhas solicitações', icon: ListChecks, roles: ['gestao_viagens'] },
   { id: 'queue', label: 'Solicitações', icon: Inbox, roles: ['gestao_viagens'] },
   { id: 'upcoming', label: 'Próximas viagens', icon: CalendarClock, roles: ['gestao_viagens'] },
-  { id: 'travelers', label: 'Colaboradores', icon: Users, roles: ['gestao_viagens'] },
   { id: 'users', label: 'Usuários', icon: Users, roles: ['gestao_viagens'] },
   { id: 'worksites', label: 'Obras', icon: Building2, roles: ['gestao_viagens'] },
   { id: 'policy', label: 'Política e ajuda', icon: HelpCircle, roles: ['gestao_viagens'] },
@@ -50,7 +51,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'all-requests', label: 'Solicitações', icon: ListChecks, roles: ['super_admin'] },
   { id: 'worksites', label: 'Obras', icon: Building2, roles: ['super_admin'] },
   { id: 'users', label: 'Usuários', icon: Users, roles: ['super_admin'] },
-  { id: 'travelers', label: 'Colaboradores', icon: Users, roles: ['super_admin'] },
   { id: 'rules', label: 'Regras e prazos', icon: Clock, roles: ['super_admin'] },
   { id: 'policy', label: 'Política e ajuda', icon: HelpCircle, roles: ['super_admin'] },
   { id: 'reports', label: 'Relatórios', icon: BarChart3, roles: ['super_admin'] },

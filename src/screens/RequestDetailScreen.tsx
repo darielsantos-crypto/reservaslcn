@@ -32,8 +32,6 @@ import {
   DEADLINE_STYLES,
   DEADLINE_DOTS,
   PURPOSE_LABELS,
-  NOT_ATTENDED_REASONS,
-  NOT_ATTENDED_LABELS,
   ATTACHMENT_LABELS,
   FLEXIBILITY_LABELS,
 } from '@/lib/constants';
@@ -50,9 +48,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>('resumo');
   const [comment, setComment] = useState('');
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [notAttendedOpen, setNotAttendedOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [notAttendedReason, setNotAttendedReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   async function reload() {
@@ -77,13 +73,13 @@ export function RequestDetailScreen({ id }: { id: string }) {
     reload();
   }
 
-  async function assumeRequest() {
+  async function startRequest() {
     if (!profile || !req) return;
     setActionLoading(true);
-    await supabase.from('travel_app_requests').update({ assigned_to: profile.id, status: 'em_analise', updated_at: new Date().toISOString() }).eq('id', req.id);
-    await appendStatus(req.id, profile.id, req.status, 'em_analise', 'Solicitação assumida');
-    await logAudit(profile.id, 'assume_request', { type: 'travel_request', id: req.id });
-    await notify(req.requester_id, 'Solicitação assumida', `${req.request_number} está em atendimento`, `request/${req.id}`);
+    await supabase.from('travel_app_requests').update({ assigned_to: profile.id, status: 'em_andamento', updated_at: new Date().toISOString() }).eq('id', req.id);
+    await appendStatus(req.id, profile.id, req.status, 'em_andamento', 'Atendimento iniciado');
+    await logAudit(profile.id, 'start_request', { type: 'travel_request', id: req.id });
+    await notify(req.requester_id, 'Atendimento iniciado', `${req.request_number} está em atendimento`, `request/${req.id}`);
     setActionLoading(false);
     reload();
   }
@@ -106,16 +102,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
     reload();
   }
 
-  async function doNotAttended() {
-    if (!profile || !req || !notAttendedReason) return;
-    setActionLoading(true);
-    await supabase.from('travel_app_requests').update({ status: 'nao_atendida', not_attended_reason: notAttendedReason, updated_at: new Date().toISOString() }).eq('id', req.id);
-    await appendStatus(req.id, profile.id, req.status, 'nao_atendida', NOT_ATTENDED_LABELS[notAttendedReason]);
-    await logAudit(profile.id, 'mark_not_attended', { type: 'travel_request', id: req.id }, { observation: notAttendedReason });
-    setActionLoading(false);
-    setNotAttendedOpen(false);
-    reload();
-  }
+
 
   if (loading) return <PageLoader />;
   if (!req) return <EmptyState title="Solicitação não encontrada" />;
@@ -124,7 +111,8 @@ export function RequestDetailScreen({ id }: { id: string }) {
   const isOwner = req.requester_id === profile?.id;
 
   const visibleTabs = TABS.filter((t) => {
-    if (['cotacao', 'compra'].includes(t) && !isGestao) return false;
+    if (t === 'cotacao' && !isGestao) return false;
+    if (t === 'compra' && !isGestao && !req.purchases?.length) return false;
     if (t === 'hospedagem' && !req.accommodations?.length) return false;
     if (t === 'bagagem' && !req.baggage?.length) return false;
     if (t === 'adiantamento' && !req.advance) return false;
@@ -282,9 +270,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
             <QuotationTab req={req} onChange={reload} />
           )}
 
-          {tab === 'compra' && isGestao && (
-            <PurchaseTab req={req} onChange={reload} />
-          )}
+          {tab === 'compra' && (isGestao ? <PurchaseTab req={req} onChange={reload} /> : <PurchaseSummary req={req} />)}
 
           {tab === 'anexos' && (
             <AttachmentsTab req={req} isGestao={isGestao} onChange={reload} />
@@ -340,12 +326,11 @@ export function RequestDetailScreen({ id }: { id: string }) {
         {isGestao && (
           <>
             {!req.assigned_to && req.status !== 'cancelada' && req.status !== 'finalizada' && (
-              <Button onClick={assumeRequest} loading={actionLoading}>Assumir atendimento</Button>
+              <Button onClick={startRequest} loading={actionLoading}>Iniciar atendimento</Button>
             )}
             {req.assigned_to === profile?.id && req.status !== 'finalizada' && req.status !== 'cancelada' && (
               <>
                 <StatusSelect current={req.status} onChange={changeStatus} />
-                <Button variant="outline" onClick={() => setNotAttendedOpen(true)}>Não atendida</Button>
               </>
             )}
             <Button variant="outline" onClick={() => setCancelOpen(true)}>Cancelar solicitação</Button>
@@ -364,16 +349,6 @@ export function RequestDetailScreen({ id }: { id: string }) {
         </Field>
       </Modal>
 
-      {/* Not attended modal */}
-      <Modal open={notAttendedOpen} onClose={() => setNotAttendedOpen(false)} title="Marcar como não atendida"
-        footer={<><Button variant="outline" onClick={() => setNotAttendedOpen(false)}>Fechar</Button><Button variant="danger" onClick={doNotAttended} loading={actionLoading} disabled={!notAttendedReason}>Confirmar</Button></>}>
-        <Field label="Motivo" required>
-          <Select value={notAttendedReason} onChange={(e) => setNotAttendedReason(e.target.value)}>
-            <option value="">Selecione...</option>
-            {NOT_ATTENDED_REASONS.map((r) => <option key={r} value={r}>{NOT_ATTENDED_LABELS[r]}</option>)}
-          </Select>
-        </Field>
-      </Modal>
     </div>
   );
 }
@@ -397,7 +372,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 function StatusSelect({ current, onChange }: { current: RequestStatus; onChange: (s: RequestStatus) => void }) {
-  const flow: RequestStatus[] = ['em_analise', 'aguardando_informacoes', 'em_orcamento', 'em_negociacao', 'em_compra', 'compra_realizada', 'finalizada'];
+  const flow: RequestStatus[] = ['em_andamento', 'orcado', 'aprovado', 'finalizada'];
   return (
     <Select value={current} onChange={(e) => onChange(e.target.value as RequestStatus)} className="w-auto">
       {flow.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
@@ -420,10 +395,14 @@ function QuotationTab({ req, onChange }: { req: RequestWithRelations; onChange: 
     await supabase.from('travel_app_quotations').insert({
       request_id: req.id,
       quote_type: type,
+      quote_detail: { empresa: supplier || null },
       total_value: value ? Number(value) : null,
       notes,
       created_by: profile.id,
     });
+    await supabase.from('travel_app_requests').update({ status: 'orcado', updated_at: new Date().toISOString() }).eq('id', req.id);
+    await appendStatus(req.id, profile.id, req.status, 'orcado', 'Orçamento registrado');
+    await notify(req.requester_id, 'Pedido orçado', `${req.request_number} — orçamento registrado`, `request/${req.id}`);
     setSaving(false);
     setOpen(false);
     setSupplier(''); setValue(''); setNotes('');
@@ -472,10 +451,26 @@ function QuotationTab({ req, onChange }: { req: RequestWithRelations; onChange: 
   );
 }
 
+function PurchaseSummary({ req }: { req: RequestWithRelations }) {
+  return <div className="space-y-3">
+    <p className="text-sm font-medium text-gray-900">Dados da viagem</p>
+    {req.purchases?.map((p) => <div key={p.id} className="rounded-xl border p-4 text-sm space-y-2">
+      {p.airline && <InfoRow label="Companhia / empresa" value={`${p.airline}${p.flight_number ? ` · ${p.flight_number}` : ''}`} />}
+      {p.locator && <InfoRow label="Localizador" value={p.locator} />}
+      {p.ticket_number && <InfoRow label="Bilhete" value={p.ticket_number} />}
+      {p.departure_time && <InfoRow label="Saída" value={p.departure_time} />}
+      {p.arrival_time && <InfoRow label="Chegada" value={p.arrival_time} />}
+      {p.hotel && <InfoRow label="Hotel" value={p.hotel} />}
+      {p.reservation_number && <InfoRow label="Reserva" value={p.reservation_number} />}
+      {p.notes && <p className="text-gray-600 pt-2 border-t">{p.notes}</p>}
+    </div>)}
+  </div>;
+}
+
 function PurchaseTab({ req, onChange }: { req: RequestWithRelations; onChange: () => void }) {
   const { profile } = useAuth();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ locator: '', ticket: '', total: '', notes: '' });
+  const [form, setForm] = useState({ agency: '', airline: '', flight: '', locator: '', ticket: '', reservation: '', hotel: '', departureTime: '', arrivalTime: '', total: '', notes: '' });
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -484,19 +479,26 @@ function PurchaseTab({ req, onChange }: { req: RequestWithRelations; onChange: (
     await supabase.from('travel_app_purchases').insert({
       request_id: req.id,
       purchased_at: new Date().toISOString().slice(0, 10),
+      agency: form.agency || null,
+      airline: form.airline || null,
+      flight_number: form.flight || null,
       locator: form.locator || null,
       ticket_number: form.ticket || null,
+      reservation_number: form.reservation || null,
+      hotel: form.hotel || null,
+      departure_time: form.departureTime || null,
+      arrival_time: form.arrivalTime || null,
       total_value: form.total ? Number(form.total) : null,
       notes: form.notes || null,
       ticket_issued: !!form.ticket,
       created_by: profile.id,
     });
-    await supabase.from('travel_app_requests').update({ status: 'compra_realizada', updated_at: new Date().toISOString() }).eq('id', req.id);
-    await appendStatus(req.id, profile.id, req.status, 'compra_realizada', 'Compra registrada');
-    await notify(req.requester_id, 'Compra realizada', `${req.request_number} — bilhete/voucher disponível`, `request/${req.id}`);
+    await supabase.from('travel_app_requests').update({ status: 'aprovado', updated_at: new Date().toISOString() }).eq('id', req.id);
+    await appendStatus(req.id, profile.id, req.status, 'aprovado', 'Compra aprovada e registrada');
+    await notify(req.requester_id, 'Compra aprovada', `${req.request_number} — dados da viagem disponíveis`, `request/${req.id}`);
     setSaving(false);
     setOpen(false);
-    setForm({ locator: '', ticket: '', total: '', notes: '' });
+    setForm({ agency: '', airline: '', flight: '', locator: '', ticket: '', reservation: '', hotel: '', departureTime: '', arrivalTime: '', total: '', notes: '' });
     onChange();
   }
 
@@ -513,7 +515,9 @@ function PurchaseTab({ req, onChange }: { req: RequestWithRelations; onChange: (
             <span className="font-medium text-gray-900">Compra</span>
             <span className="font-semibold text-gray-900">{formatCurrency(p.total_value)}</span>
           </div>
+          {p.airline && <p className="text-xs text-gray-500">Companhia: {p.airline} {p.flight_number ? `· Voo ${p.flight_number}` : ''}</p>}
           {p.locator && <p className="text-xs text-gray-500">Localizador: {p.locator}</p>}
+          {p.hotel && <p className="text-xs text-gray-500">Hotel: {p.hotel} {p.reservation_number ? `· Reserva ${p.reservation_number}` : ''}</p>}
           {p.ticket_number && <p className="text-xs text-gray-500">Bilhete: {p.ticket_number}</p>}
           {p.ticket_issued && <Badge className="bg-emerald-100 text-emerald-800 mt-1">Passagem emitida</Badge>}
         </div>
@@ -521,9 +525,9 @@ function PurchaseTab({ req, onChange }: { req: RequestWithRelations; onChange: (
       <Modal open={open} onClose={() => setOpen(false)} title="Registrar compra"
         footer={<><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={save} loading={saving}>Salvar</Button></>}>
         <div className="space-y-3">
-          <Field label="Localizador"><Input value={form.locator} onChange={(e) => setForm({ ...form, locator: e.target.value })} /></Field>
+          <div className="grid sm:grid-cols-2 gap-3"><Field label="Agência"><Input value={form.agency} onChange={(e) => setForm({ ...form, agency: e.target.value })} /></Field><Field label="Companhia aérea / empresa de ônibus"><Input value={form.airline} onChange={(e) => setForm({ ...form, airline: e.target.value })} /></Field><Field label="Voo / linha"><Input value={form.flight} onChange={(e) => setForm({ ...form, flight: e.target.value })} /></Field><Field label="Localizador"><Input value={form.locator} onChange={(e) => setForm({ ...form, locator: e.target.value })} /></Field>
           <Field label="Número do bilhete"><Input value={form.ticket} onChange={(e) => setForm({ ...form, ticket: e.target.value })} /></Field>
-          <Field label="Valor total (R$)"><Input type="number" value={form.total} onChange={(e) => setForm({ ...form, total: e.target.value })} /></Field>
+          <Field label="Hotel"><Input value={form.hotel} onChange={(e) => setForm({ ...form, hotel: e.target.value })} /></Field><Field label="Número da reserva"><Input value={form.reservation} onChange={(e) => setForm({ ...form, reservation: e.target.value })} /></Field><Field label="Horário de saída"><Input value={form.departureTime} onChange={(e) => setForm({ ...form, departureTime: e.target.value })} /></Field><Field label="Horário de chegada"><Input value={form.arrivalTime} onChange={(e) => setForm({ ...form, arrivalTime: e.target.value })} /></Field></div><Field label="Valor total (R$)"><Input type="number" value={form.total} onChange={(e) => setForm({ ...form, total: e.target.value })} /></Field>
           <Field label="Observações"><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
         </div>
       </Modal>

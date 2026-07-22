@@ -35,3 +35,10 @@ O projeto inclui as rotas `/api/admin/users` e `/api/create-user` (compatibilida
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 
 Depois faça um novo deploy sem cache. Ao abrir `/api/create-user` pelo navegador, o retorno esperado é HTTP 405 (Método não permitido), confirmando que a função foi publicada.
+
+## Atualização do fluxo simplificado
+Após as migrações anteriores, execute também:
+
+`supabase/migrations/20260722130000_0004_SIMPLIFY_TRAVEL_FLOW.sql`
+
+Ela simplifica a jornada para Pedido recebido → Em andamento → Orçado → Aprovado → Finalizado, impede a Gestão de Viagens de visualizar o Super Administrador e acrescenta os campos de voo/horários na compra. Não altera nenhuma tabela do Suprimentos.

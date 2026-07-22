@@ -50,9 +50,9 @@ export function OverviewScreen() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Stat icon={Inbox} label="Aguardando atendimento" value={statusCounts['aguardando_atendimento'] ?? 0} tone="amber" onClick={() => navigate('all-requests')} />
-        <Stat icon={Clock} label="Em análise" value={statusCounts['em_analise'] ?? 0} tone="blue" onClick={() => navigate('all-requests')} />
-        <Stat icon={ShoppingCart} label="Em compra" value={statusCounts['em_compra'] ?? 0} tone="blue" onClick={() => navigate('all-requests')} />
+        <Stat icon={Inbox} label="Pedidos recebidos" value={statusCounts['pedido_recebido'] ?? 0} tone="amber" onClick={() => navigate('all-requests')} />
+        <Stat icon={Clock} label="Em andamento" value={statusCounts['em_andamento'] ?? 0} tone="blue" onClick={() => navigate('all-requests')} />
+        <Stat icon={ShoppingCart} label="Orçados" value={statusCounts['orcado'] ?? 0} tone="blue" onClick={() => navigate('all-requests')} />
         <Stat icon={CheckCircle2} label="Finalizadas" value={statusCounts['finalizada'] ?? 0} tone="emerald" onClick={() => navigate('all-requests')} />
         <Stat icon={AlertTriangle} label="Fora do prazo" value={rows.filter((r) => r.deadline_status === 'fora').length} tone="red" onClick={() => navigate('all-requests')} />
         <Stat icon={CalendarClock} label="Próximas viagens" value={rows.filter((r) => { const s = segments[r.id]?.[0]; return s?.departure_date && new Date(s.departure_date) >= new Date(); }).length} tone="gray" onClick={() => navigate('upcoming')} />
@@ -84,17 +84,12 @@ export function OverviewScreen() {
 }
 
 const STATUS_LABELS_SHORT: Record<string, string> = {
-  enviada: 'Enviada',
-  aguardando_atendimento: 'Aguardando',
-  em_analise: 'Em análise',
-  aguardando_informacoes: 'Aguardando info',
-  em_orcamento: 'Em orçamento',
-  em_negociacao: 'Em negociação',
-  em_compra: 'Em compra',
-  compra_realizada: 'Comprada',
-  finalizada: 'Finalizada',
-  nao_atendida: 'Não atendida',
-  cancelada: 'Cancelada',
+  pedido_recebido: 'Pedido recebido',
+  em_andamento: 'Em andamento',
+  orcado: 'Orçado',
+  aprovado: 'Aprovado',
+  finalizada: 'Finalizado',
+  cancelada: 'Cancelado',
 };
 
 function Stat({ icon: Icon, label, value, tone, onClick }: { icon: typeof Inbox; label: string; value: number; tone: 'amber' | 'blue' | 'emerald' | 'gray' | 'red'; onClick?: () => void }) {

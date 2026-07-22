@@ -14,23 +14,17 @@ export type DeadlineStatus = 'dentro' | 'proximo' | 'fora';
 
 export type RequestStatus =
   | 'rascunho'
-  | 'enviada'
-  | 'aguardando_atendimento'
-  | 'em_analise'
-  | 'aguardando_informacoes'
-  | 'em_orcamento'
-  | 'em_negociacao'
-  | 'em_compra'
-  | 'compra_realizada'
+  | 'pedido_recebido'
+  | 'em_andamento'
+  | 'orcado'
+  | 'aprovado'
   | 'finalizada'
-  | 'nao_atendida'
   | 'cancelada';
 
 export type BaggageType =
   | 'nao'
   | 'mao'
   | 'despachada'
-  | 'uniforme_epi'
   | 'ferramentas_equipamentos'
   | 'adicional_especial';
 
@@ -263,6 +257,9 @@ export interface Purchase {
   supplier_id: string | null;
   agency: string | null;
   airline: string | null;
+  flight_number: string | null;
+  departure_time: string | null;
+  arrival_time: string | null;
   hotel: string | null;
   purchased_at: string;
   ticket_value: number | null;
