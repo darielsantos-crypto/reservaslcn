@@ -29,3 +29,27 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
+
+/* Responsividade operacional: celular primeiro, sem zoom e sem cortes. */
+@layer base {
+  html, body, #root { min-height: 100%; }
+  body { overflow-x: hidden; }
+  button, input, select, textarea { font: inherit; }
+  @media (max-width: 767px) {
+    input, select, textarea { font-size: 16px !important; }
+  }
+}
+
+@layer utilities {
+  .safe-top { padding-top: max(1rem, env(safe-area-inset-top, 0px)); }
+  .touch-target { min-height: 44px; min-width: 44px; }
+  .mobile-stack { @apply flex flex-col sm:flex-row; }
+  .responsive-grid { @apply grid grid-cols-1 sm:grid-cols-2; }
+  .mobile-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+}
+
+@media (max-width: 639px) {
+  .page-title-row { align-items: stretch !important; flex-direction: column !important; }
+  .page-title-row > button { width: 100%; }
+  table { font-size: 0.8125rem; }
+}

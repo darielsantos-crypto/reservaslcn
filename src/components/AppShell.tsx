@@ -17,6 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!profile) return null;
 
   const items = NAV_ITEMS.filter((n) => n.roles.includes(profile.role));
+  const mobileItems = items.filter((n) => n.mobile).slice(0, 4);
 
   const initials = profile.full_name
     .split(' ')
@@ -110,7 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <div className="absolute left-0 inset-y-0 w-72 bg-white shadow-xl flex flex-col">
+          <div className="absolute left-0 inset-y-0 w-[88vw] max-w-sm bg-white shadow-xl flex flex-col">
             <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-lg bg-[#004883] text-white flex items-center justify-center">
@@ -219,14 +220,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 pt-14 lg:pt-0 px-4 sm:px-6 py-5 pb-24 lg:pb-8 max-w-6xl w-full mx-auto">
+        <main className="flex-1 pt-14 lg:pt-0 px-3 sm:px-5 lg:px-6 py-4 sm:py-5 pb-28 lg:pb-8 max-w-7xl w-full mx-auto min-w-0">
           {children}
         </main>
 
         {/* Mobile bottom nav */}
         <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-gray-200 safe-bottom">
-          <div className="grid grid-cols-5">
-            {items.slice(0, 5).map((item) => {
+          <div className="grid" style={{ gridTemplateColumns: `repeat(${mobileItems.length}, minmax(0, 1fr))` }}>
+            {mobileItems.map((item) => {
               const Icon = item.icon;
               const active = route === item.id;
               return (
@@ -239,7 +240,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   )}
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="truncate max-w-[60px]">{item.label.split(' ')[0]}</span>
+                  <span className="truncate max-w-[78px]">{item.shortLabel ?? item.label}</span>
                 </button>
               );
             })}

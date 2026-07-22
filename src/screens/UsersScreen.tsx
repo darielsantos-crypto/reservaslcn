@@ -96,7 +96,7 @@ export function UsersScreen() {
   if (loading) return <PageLoader />;
 
   return <div className="space-y-4">
-    <div className="flex items-center justify-between gap-3">
+    <div className="page-title-row flex items-center justify-between gap-3">
       <div><h1 className="text-lg font-semibold">Usuários</h1><p className="text-sm text-gray-500">{rows.length} cadastrados no sistema de Viagens</p></div>
       <Button onClick={openNew}><Plus className="h-4 w-4"/>Novo usuário</Button>
     </div>
