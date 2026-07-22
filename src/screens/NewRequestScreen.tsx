@@ -302,7 +302,7 @@ export function NewRequestScreen() {
       const deadlineInfo = deadline ?? { actualDays: null, minDays: null, status: 'dentro' as DeadlineStatus };
 
       const { data: req, error: e1 } = await supabase
-        .from('travel_requests')
+        .from('travel_app_requests')
         .insert({
           request_number: number,
           requester_id: profile.id,
@@ -333,12 +333,12 @@ export function NewRequestScreen() {
       // travelers
       if (draft.travelerIds.length) {
         await supabase
-          .from('travel_request_travelers')
+          .from('travel_app_request_travelers')
           .insert(draft.travelerIds.map((tid) => ({ request_id: req.id, traveler_id: tid })));
       }
 
       // segment
-      await supabase.from('travel_segments').insert({
+      await supabase.from('travel_app_segments').insert({
         request_id: req.id,
         segment_order: 1,
         origin: draft.origin,
@@ -354,7 +354,7 @@ export function NewRequestScreen() {
 
       // accommodation
       if (showAccommodation && draft.checkIn && draft.checkOut) {
-        await supabase.from('accommodations').insert({
+        await supabase.from('travel_app_accommodations').insert({
           request_id: req.id,
           city: draft.accCity || null,
           check_in: draft.checkIn,
@@ -371,7 +371,7 @@ export function NewRequestScreen() {
 
       // baggage
       if (draft.baggageType !== 'nao') {
-        await supabase.from('baggage_requests').insert({
+        await supabase.from('travel_app_baggage_requests').insert({
           request_id: req.id,
           baggage_type: draft.baggageType,
           description: draft.baggageDescription || null,
@@ -384,7 +384,7 @@ export function NewRequestScreen() {
 
       // advance
       if (draft.advanceNeeded) {
-        await supabase.from('advance_requests').insert({
+        await supabase.from('travel_app_advance_requests').insert({
           request_id: req.id,
           needed: true,
           estimated_value: draft.advanceValue ? Number(draft.advanceValue) : null,
@@ -398,10 +398,10 @@ export function NewRequestScreen() {
       for (const file of files) {
         const path = `${req.id}/${Date.now()}-${file.name}`;
         const { error: upErr } = await supabase.storage
-          .from('attachments')
+          .from('travel_app_attachments')
           .upload(path, file);
         if (!upErr) {
-          await supabase.from('attachments').insert({
+          await supabase.from('travel_app_attachments').insert({
             request_id: req.id,
             category: 'documento',
             label: file.name,
@@ -419,7 +419,7 @@ export function NewRequestScreen() {
 
       // notify travel management
       const { data: gestores } = await supabase
-        .from('profiles')
+        .from('travel_app_profiles')
         .select('id')
         .in('role', ['gestao_viagens', 'super_admin'])
         .eq('active', true);

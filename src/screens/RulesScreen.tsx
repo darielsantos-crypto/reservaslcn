@@ -16,7 +16,7 @@ export function RulesScreen() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    supabase.from('policy_rules').select('*').order('label').then(({ data }) => {
+    supabase.from('travel_app_policy_rules').select('*').order('label').then(({ data }) => {
       setRules((data ?? []) as PolicyRule[]);
       setLoading(false);
     });
@@ -26,7 +26,7 @@ export function RulesScreen() {
     if (!profile) return;
     setSaving(true);
     for (const r of rules) {
-      await supabase.from('policy_rules').update({ min_days: r.min_days, description: r.description, updated_by: profile.id, updated_at: new Date().toISOString() }).eq('id', r.id);
+      await supabase.from('travel_app_policy_rules').update({ min_days: r.min_days, description: r.description, updated_by: profile.id, updated_at: new Date().toISOString() }).eq('id', r.id);
     }
     setSaving(false);
     setSaved(true);

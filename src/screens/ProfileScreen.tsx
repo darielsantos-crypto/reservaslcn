@@ -18,7 +18,7 @@ export function ProfileScreen() {
   async function save() {
     if (!profile) return;
     setSaving(true);
-    await supabase.from('profiles').update({ full_name, phone, city, state, updated_at: new Date().toISOString() }).eq('id', profile.id);
+    await supabase.from('travel_app_profiles').update({ full_name, phone, city, state, updated_at: new Date().toISOString() }).eq('id', profile.id);
     await refreshProfile();
     setSaving(false);
     setSaved(true);

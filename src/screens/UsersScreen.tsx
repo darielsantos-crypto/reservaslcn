@@ -27,8 +27,8 @@ export function UsersScreen() {
 
   async function load() {
     const [p, w] = await Promise.all([
-      supabase.from('profiles').select('*').order('name'),
-      supabase.from('worksites').select('*').order('name'),
+      supabase.from('travel_app_profiles').select('*').order('full_name'),
+      supabase.from('travel_app_worksites').select('*').order('name'),
     ]);
     setRows((p.data ?? []) as Profile[]);
     setWorksites((w.data ?? []) as Worksite[]);
@@ -47,11 +47,8 @@ export function UsersScreen() {
     if (!profile) return;
     if (editing) {
       const { password: _password, worksiteIds: _worksiteIds, ...profileFields } = form;
-      await supabase.from('profiles').update({
+      await supabase.from('travel_app_profiles').update({
         ...profileFields,
-        name: profileFields.full_name,
-        matricula: profileFields.registration || null,
-        job_title: profileFields.position || null,
         updated_at: new Date().toISOString(),
       }).eq('id', editing.id);
     } else {
@@ -77,7 +74,7 @@ export function UsersScreen() {
   }
 
   async function toggle(u: Profile) {
-    await supabase.from('profiles').update({ active: !u.active, updated_at: new Date().toISOString() }).eq('id', u.id);
+    await supabase.from('travel_app_profiles').update({ active: !u.active, updated_at: new Date().toISOString() }).eq('id', u.id);
     load();
   }
 
@@ -96,16 +93,16 @@ export function UsersScreen() {
   }
 
   async function openLink(u: Profile) {
-    const { data } = await supabase.from('user_worksites').select('worksite_id').eq('user_id', u.id);
+    const { data } = await supabase.from('travel_app_user_worksites').select('worksite_id').eq('user_id', u.id);
     setLinkIds((data ?? []).map((d: any) => d.worksite_id));
     setLinkOpen(u);
   }
 
   async function saveLinks() {
     if (!linkOpen) return;
-    await supabase.from('user_worksites').delete().eq('user_id', linkOpen.id);
+    await supabase.from('travel_app_user_worksites').delete().eq('user_id', linkOpen.id);
     if (linkIds.length) {
-      await supabase.from('user_worksites').insert(linkIds.map((id) => ({ user_id: linkOpen.id, worksite_id: id })));
+      await supabase.from('travel_app_user_worksites').insert(linkIds.map((id) => ({ user_id: linkOpen.id, worksite_id: id })));
     }
     setLinkOpen(null);
   }

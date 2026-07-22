@@ -11,7 +11,7 @@ export function useNotifications() {
   const load = useCallback(async () => {
     if (!profile) return;
     const { data } = await supabase
-      .from('notifications')
+      .from('travel_app_notifications')
       .select('*')
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false })
@@ -24,10 +24,10 @@ export function useNotifications() {
     load();
     if (!profile) return;
     const channel = supabase
-      .channel('notifications')
+      .channel('travel_app_notifications')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${profile.id}` },
+        { event: '*', schema: 'public', table: 'travel_app_notifications', filter: `user_id=eq.${profile.id}` },
         () => load()
       )
       .subscribe();
@@ -37,14 +37,14 @@ export function useNotifications() {
   }, [profile, load]);
 
   const markRead = useCallback(async (id: string) => {
-    await supabase.from('notifications').update({ read: true }).eq('id', id);
+    await supabase.from('travel_app_notifications').update({ read: true }).eq('id', id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
     setUnread((prev) => Math.max(0, prev - 1));
   }, []);
 
   const markAllRead = useCallback(async () => {
     if (!profile) return;
-    await supabase.from('notifications').update({ read: true }).eq('user_id', profile.id).eq('read', false);
+    await supabase.from('travel_app_notifications').update({ read: true }).eq('user_id', profile.id).eq('read', false);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnread(0);
   }, [profile]);
@@ -53,7 +53,7 @@ export function useNotifications() {
 }
 
 export async function notify(userId: string, title: string, body?: string, link?: string) {
-  await supabase.from('notifications').insert({ user_id: userId, title, body, link });
+  await supabase.from('travel_app_notifications').insert({ user_id: userId, title, body, link });
 }
 
 export async function logAudit(
@@ -62,7 +62,7 @@ export async function logAudit(
   entity?: { type: string; id?: string },
   extra?: { previousStatus?: string; newStatus?: string; field?: string; justification?: string; observation?: string }
 ) {
-  await supabase.from('audit_logs').insert({
+  await supabase.from('travel_app_audit_logs').insert({
     user_id: userId,
     action,
     entity_type: entity?.type,
@@ -82,7 +82,7 @@ export async function appendStatus(
   next: string,
   note?: string
 ) {
-  await supabase.from('status_history').insert({
+  await supabase.from('travel_app_status_history').insert({
     request_id: requestId,
     user_id: userId,
     previous_status: previous,

@@ -21,12 +21,12 @@ export function ReportsScreen() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .from('travel_requests')
-        .select('*, worksite:worksites(*)')
+        .from('travel_app_requests')
+        .select('*, worksite:travel_app_worksites(*)')
         .neq('status', 'rascunho')
         .order('created_at', { ascending: false });
       const r = (data ?? []) as Row[];
-      const pur = await Promise.all(r.map((row) => supabase.from('purchases').select('*').eq('request_id', row.id)));
+      const pur = await Promise.all(r.map((row) => supabase.from('travel_app_purchases').select('*').eq('request_id', row.id)));
       r.forEach((row, i) => (row.purchases = (pur[i].data ?? []) as Purchase[]));
       setRows(r);
       setLoading(false);

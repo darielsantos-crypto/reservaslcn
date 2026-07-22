@@ -18,15 +18,15 @@ export function OverviewScreen() {
   useEffect(() => {
     (async () => {
       const [r, u, w, t] = await Promise.all([
-        supabase.from('travel_requests').select('*, worksite:worksites(*)').neq('status', 'rascunho').order('updated_at', { ascending: false }),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
-        supabase.from('worksites').select('id', { count: 'exact', head: true }),
-        supabase.from('travelers').select('id', { count: 'exact', head: true }),
+        supabase.from('travel_app_requests').select('*, worksite:travel_app_worksites(*)').neq('status', 'rascunho').order('updated_at', { ascending: false }),
+        supabase.from('travel_app_profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('travel_app_worksites').select('id', { count: 'exact', head: true }),
+        supabase.from('travel_app_travelers').select('id', { count: 'exact', head: true }),
       ]);
       const reqs = (r.data ?? []) as Row[];
       setRows(reqs);
       setCounts({ users: u.count ?? 0, worksites: w.count ?? 0, travelers: t.count ?? 0 });
-      const segs = await Promise.all(reqs.map((row) => supabase.from('travel_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1)));
+      const segs = await Promise.all(reqs.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1)));
       const sm: Record<string, TravelSegment[]> = {};
       reqs.forEach((row, i) => (sm[row.id] = (segs[i].data ?? []) as TravelSegment[]));
       setSegments(sm);

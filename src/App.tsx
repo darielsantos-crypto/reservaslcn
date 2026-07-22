@@ -14,7 +14,6 @@ import { QueueScreen } from '@/screens/QueueScreen';
 import { WorksitesScreen } from '@/screens/WorksitesScreen';
 import { UsersScreen } from '@/screens/UsersScreen';
 import { TravelersScreen } from '@/screens/TravelersScreen';
-import { SuppliersScreen } from '@/screens/SuppliersScreen';
 import { RulesScreen } from '@/screens/RulesScreen';
 import { FaqAdminScreen } from '@/screens/FaqAdminScreen';
 import { ReportsScreen } from '@/screens/ReportsScreen';
@@ -33,7 +32,7 @@ function Routes() {
   if (route === 'policy') return <PolicyScreen />;
   if (route === 'profile') return <ProfileScreen />;
   if (route === 'panel') return <GestaoPanelScreen />;
-  if (route === 'queue') return <QueueScreen filterStatus={['enviada', 'aguardando_atendimento']} title="Aguardando atendimento" />;
+  if (route === 'queue') return <QueueScreen title="Solicitações" />;
   if (route === 'waiting') return <QueueScreen filterStatus={['enviada', 'aguardando_atendimento']} title="Aguardando atendimento" />;
   if (route === 'attendance') return <QueueScreen filterStatus={['em_analise', 'em_orcamento', 'em_negociacao', 'em_compra', 'aguardando_informacoes']} title="Em atendimento" />;
   if (route === 'purchases') return <QueueScreen filterStatus={['compra_realizada']} title="Compras realizadas" />;
@@ -41,7 +40,6 @@ function Routes() {
   if (route === 'worksites') return <WorksitesScreen />;
   if (route === 'users') return <UsersScreen />;
   if (route === 'travelers') return <TravelersScreen />;
-  if (route === 'suppliers') return <SuppliersScreen />;
   if (route === 'reports') return <ReportsScreen />;
   if (route === 'rules') return <RulesScreen />;
   if (route === 'faq-admin') return <FaqAdminScreen />;

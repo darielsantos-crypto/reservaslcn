@@ -13,12 +13,12 @@ export function AuditScreen() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(200);
+      const { data } = await supabase.from('travel_app_audit_logs').select('*').order('created_at', { ascending: false }).limit(200);
       const logs = (data ?? []) as AuditLog[];
       setRows(logs);
       const ids = Array.from(new Set(logs.map((l) => l.user_id).filter(Boolean))) as string[];
       if (ids.length) {
-        const { data: udata } = await supabase.from('profiles').select('*').in('id', ids);
+        const { data: udata } = await supabase.from('travel_app_profiles').select('*').in('id', ids);
         (udata ?? []).forEach((u) => (users[u.id] = u as Profile));
         setUsers({ ...users });
       }

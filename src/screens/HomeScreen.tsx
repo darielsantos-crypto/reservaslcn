@@ -23,15 +23,15 @@ export function HomeScreen() {
     if (!profile) return;
     (async () => {
       const { data } = await supabase
-        .from('travel_requests')
-        .select('*, worksite:worksites(*)')
+        .from('travel_app_requests')
+        .select('*, worksite:travel_app_worksites(*)')
         .eq('requester_id', profile.id)
         .order('updated_at', { ascending: false })
         .limit(20);
       const rows = (data ?? []) as Row[];
       setRequests(rows);
       const segPromises = rows.map((r) =>
-        supabase.from('travel_segments').select('*').eq('request_id', r.id).order('segment_order').limit(1)
+        supabase.from('travel_app_segments').select('*').eq('request_id', r.id).order('segment_order').limit(1)
       );
       const segResults = await Promise.all(segPromises);
       const segMap: Record<string, TravelSegment[]> = {};
@@ -40,8 +40,8 @@ export function HomeScreen() {
 
       const trtPromises = rows.map((r) =>
         supabase
-          .from('travel_request_travelers')
-          .select('traveler:travelers(full_name)')
+          .from('travel_app_request_travelers')
+          .select('traveler:travel_app_travelers(full_name)')
           .eq('request_id', r.id)
           .limit(1)
       );

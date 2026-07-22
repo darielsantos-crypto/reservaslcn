@@ -19,7 +19,7 @@ export function FaqAdminScreen() {
   const [form, setForm] = useState(empty);
 
   async function load() {
-    const { data } = await supabase.from('faq_items').select('*').order('category').order('sort_order');
+    const { data } = await supabase.from('travel_app_faq_items').select('*').order('category').order('sort_order');
     setRows((data ?? []) as FaqItem[]);
     setLoading(false);
   }
@@ -34,9 +34,9 @@ export function FaqAdminScreen() {
 
   async function save() {
     if (editing) {
-      await supabase.from('faq_items').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editing.id);
+      await supabase.from('travel_app_faq_items').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editing.id);
     } else {
-      await supabase.from('faq_items').insert(form);
+      await supabase.from('travel_app_faq_items').insert(form);
     }
     setOpen(false);
     load();
@@ -44,7 +44,7 @@ export function FaqAdminScreen() {
 
   async function remove(f: FaqItem) {
     if (!confirm('Excluir esta pergunta?')) return;
-    await supabase.from('faq_items').delete().eq('id', f.id);
+    await supabase.from('travel_app_faq_items').delete().eq('id', f.id);
     load();
   }
 

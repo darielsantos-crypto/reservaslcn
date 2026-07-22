@@ -29,7 +29,7 @@ export default async function handler(req: any, res: any) {
   if (userError || !userData.user) return json(res, 401, { error: 'Sessão inválida ou expirada.' });
 
   const { data: actor, error: actorError } = await admin
-    .from('profiles')
+    .from('travel_app_profiles')
     .select('id, role, active')
     .eq('id', userData.user.id)
     .maybeSingle();
@@ -60,18 +60,13 @@ export default async function handler(req: any, res: any) {
     }
 
     const normalizedEmail = String(created.user.email ?? body.email).trim().toLowerCase();
-    const { error: profileError } = await admin.from('profiles').upsert({
+    const { error: profileError } = await admin.from('travel_app_profiles').upsert({
       id: created.user.id,
-      name: body.full_name,
-      login: normalizedEmail.split('@')[0],
       full_name: body.full_name,
       registration: body.registration || null,
-      matricula: body.registration || null,
       email: normalizedEmail,
-      password_hash: 'SUPABASE_AUTH',
       phone: body.phone || null,
       position: body.position || null,
-      job_title: body.position || null,
       city: body.city || null,
       state: body.state || null,
       role,
@@ -86,7 +81,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (Array.isArray(body.worksiteIds) && body.worksiteIds.length) {
-      await admin.from('user_worksites').insert(
+      await admin.from('travel_app_user_worksites').insert(
         body.worksiteIds.map((worksite_id: string) => ({ user_id: created.user.id, worksite_id })),
       );
     }

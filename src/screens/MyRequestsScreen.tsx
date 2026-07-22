@@ -25,21 +25,21 @@ export function MyRequestsScreen() {
     if (!profile) return;
     (async () => {
       const { data } = await supabase
-        .from('travel_requests')
-        .select('*, worksite:worksites(*)')
+        .from('travel_app_requests')
+        .select('*, worksite:travel_app_worksites(*)')
         .eq('requester_id', profile.id)
         .order('updated_at', { ascending: false });
       const r = (data ?? []) as Row[];
       setRows(r);
       const segs = await Promise.all(
-        r.map((row) => supabase.from('travel_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1))
+        r.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1))
       );
       const segMap: Record<string, TravelSegment[]> = {};
       r.forEach((row, i) => (segMap[row.id] = (segs[i].data ?? []) as TravelSegment[]));
       setSegments(segMap);
       const trts = await Promise.all(
         r.map((row) =>
-          supabase.from('travel_request_travelers').select('traveler:travelers(full_name)').eq('request_id', row.id).limit(1)
+          supabase.from('travel_app_request_travelers').select('traveler:travel_app_travelers(full_name)').eq('request_id', row.id).limit(1)
         )
       );
       const nm: Record<string, string> = {};

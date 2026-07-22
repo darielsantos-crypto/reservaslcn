@@ -69,7 +69,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
     if (!profile || !req) return;
     setActionLoading(true);
     const prev = req.status;
-    await supabase.from('travel_requests').update({ status: next, updated_at: new Date().toISOString(), finalized_at: next === 'finalizada' ? new Date().toISOString() : null }).eq('id', req.id);
+    await supabase.from('travel_app_requests').update({ status: next, updated_at: new Date().toISOString(), finalized_at: next === 'finalizada' ? new Date().toISOString() : null }).eq('id', req.id);
     await appendStatus(req.id, profile.id, prev, next, note);
     await logAudit(profile.id, 'change_status', { type: 'travel_request', id: req.id }, { previousStatus: prev, newStatus: next });
     await notify(req.requester_id, 'Status atualizado', `${req.request_number} — ${STATUS_LABELS[next]}`, `request/${req.id}`);
@@ -80,7 +80,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
   async function assumeRequest() {
     if (!profile || !req) return;
     setActionLoading(true);
-    await supabase.from('travel_requests').update({ assigned_to: profile.id, status: 'em_analise', updated_at: new Date().toISOString() }).eq('id', req.id);
+    await supabase.from('travel_app_requests').update({ assigned_to: profile.id, status: 'em_analise', updated_at: new Date().toISOString() }).eq('id', req.id);
     await appendStatus(req.id, profile.id, req.status, 'em_analise', 'Solicitação assumida');
     await logAudit(profile.id, 'assume_request', { type: 'travel_request', id: req.id });
     await notify(req.requester_id, 'Solicitação assumida', `${req.request_number} está em atendimento`, `request/${req.id}`);
@@ -90,7 +90,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
 
   async function sendComment() {
     if (!profile || !req || !comment.trim()) return;
-    await supabase.from('comments').insert({ request_id: req.id, author_id: profile.id, body: comment.trim() });
+    await supabase.from('travel_app_comments').insert({ request_id: req.id, author_id: profile.id, body: comment.trim() });
     setComment('');
     reload();
   }
@@ -98,7 +98,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
   async function doCancel() {
     if (!profile || !req || !cancelReason.trim()) return;
     setActionLoading(true);
-    await supabase.from('travel_requests').update({ status: 'cancelada', cancel_reason: cancelReason, updated_at: new Date().toISOString() }).eq('id', req.id);
+    await supabase.from('travel_app_requests').update({ status: 'cancelada', cancel_reason: cancelReason, updated_at: new Date().toISOString() }).eq('id', req.id);
     await appendStatus(req.id, profile.id, req.status, 'cancelada', cancelReason);
     await logAudit(profile.id, 'cancel_request', { type: 'travel_request', id: req.id }, { observation: cancelReason });
     setActionLoading(false);
@@ -109,7 +109,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
   async function doNotAttended() {
     if (!profile || !req || !notAttendedReason) return;
     setActionLoading(true);
-    await supabase.from('travel_requests').update({ status: 'nao_atendida', not_attended_reason: notAttendedReason, updated_at: new Date().toISOString() }).eq('id', req.id);
+    await supabase.from('travel_app_requests').update({ status: 'nao_atendida', not_attended_reason: notAttendedReason, updated_at: new Date().toISOString() }).eq('id', req.id);
     await appendStatus(req.id, profile.id, req.status, 'nao_atendida', NOT_ATTENDED_LABELS[notAttendedReason]);
     await logAudit(profile.id, 'mark_not_attended', { type: 'travel_request', id: req.id }, { observation: notAttendedReason });
     setActionLoading(false);
@@ -417,7 +417,7 @@ function QuotationTab({ req, onChange }: { req: RequestWithRelations; onChange: 
   async function save() {
     if (!profile || !req) return;
     setSaving(true);
-    await supabase.from('quotations').insert({
+    await supabase.from('travel_app_quotations').insert({
       request_id: req.id,
       quote_type: type,
       total_value: value ? Number(value) : null,
@@ -481,7 +481,7 @@ function PurchaseTab({ req, onChange }: { req: RequestWithRelations; onChange: (
   async function save() {
     if (!profile || !req) return;
     setSaving(true);
-    await supabase.from('purchases').insert({
+    await supabase.from('travel_app_purchases').insert({
       request_id: req.id,
       purchased_at: new Date().toISOString().slice(0, 10),
       locator: form.locator || null,
@@ -491,7 +491,7 @@ function PurchaseTab({ req, onChange }: { req: RequestWithRelations; onChange: (
       ticket_issued: !!form.ticket,
       created_by: profile.id,
     });
-    await supabase.from('travel_requests').update({ status: 'compra_realizada', updated_at: new Date().toISOString() }).eq('id', req.id);
+    await supabase.from('travel_app_requests').update({ status: 'compra_realizada', updated_at: new Date().toISOString() }).eq('id', req.id);
     await appendStatus(req.id, profile.id, req.status, 'compra_realizada', 'Compra registrada');
     await notify(req.requester_id, 'Compra realizada', `${req.request_number} — bilhete/voucher disponível`, `request/${req.id}`);
     setSaving(false);
@@ -541,9 +541,9 @@ function AttachmentsTab({ req, isGestao, onChange }: { req: RequestWithRelations
     if (!file) return;
     setUploading(true);
     const path = `${req.id}/${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from('attachments').upload(path, file);
+    const { error } = await supabase.storage.from('travel-app-attachments').upload(path, file);
     if (!error) {
-      await supabase.from('attachments').insert({
+      await supabase.from('travel_app_attachments').insert({
         request_id: req.id,
         category: 'documento',
         label: file.name,
@@ -559,7 +559,7 @@ function AttachmentsTab({ req, isGestao, onChange }: { req: RequestWithRelations
   }
 
   async function toggleRelease(attId: string, released: boolean) {
-    await supabase.from('attachments').update({ released }).eq('id', attId);
+    await supabase.from('travel_app_attachments').update({ released }).eq('id', attId);
     onChange();
   }
 

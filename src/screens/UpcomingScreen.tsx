@@ -18,13 +18,13 @@ export function UpcomingScreen() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .from('travel_requests')
-        .select('*, worksite:worksites(*)')
+        .from('travel_app_requests')
+        .select('*, worksite:travel_app_worksites(*)')
         .neq('status', 'rascunho')
         .not('status', 'in', '("cancelada","nao_atendida")')
         .order('updated_at', { ascending: false });
       const r = (data ?? []) as Row[];
-      const segs = await Promise.all(r.map((row) => supabase.from('travel_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1)));
+      const segs = await Promise.all(r.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1)));
       const sm: Record<string, TravelSegment[]> = {};
       r.forEach((row, i) => (sm[row.id] = (segs[i].data ?? []) as TravelSegment[]));
       setSegments(sm);
@@ -37,7 +37,7 @@ export function UpcomingScreen() {
         return da.localeCompare(db);
       });
       setRows(upcoming);
-      const trts = await Promise.all(upcoming.map((row) => supabase.from('travel_request_travelers').select('traveler:travelers(full_name)').eq('request_id', row.id).limit(1)));
+      const trts = await Promise.all(upcoming.map((row) => supabase.from('travel_app_request_travelers').select('traveler:travel_app_travelers(full_name)').eq('request_id', row.id).limit(1)));
       const nm: Record<string, string> = {};
       upcoming.forEach((row, i) => {
         const t = trts[i].data?.[0] as any;

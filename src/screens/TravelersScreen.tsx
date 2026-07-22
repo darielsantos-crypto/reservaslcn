@@ -28,7 +28,7 @@ export function TravelersScreen() {
 
   async function load() {
     const [t, w] = await Promise.all([
-      supabase.from('travelers').select('*').order('full_name'),
+      supabase.from('travel_app_travelers').select('*').order('full_name'),
       fetchWorksitesAll(),
     ]);
     setRows((t.data ?? []) as Traveler[]);
@@ -53,16 +53,16 @@ export function TravelersScreen() {
     if (!profile) return;
     const payload = { ...form, birth_date: form.birth_date || null, worksite_id: form.worksite_id || null };
     if (editing) {
-      await supabase.from('travelers').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id);
+      await supabase.from('travel_app_travelers').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id);
     } else {
-      await supabase.from('travelers').insert({ ...payload, created_by: profile.id });
+      await supabase.from('travel_app_travelers').insert({ ...payload, created_by: profile.id });
     }
     setOpen(false);
     load();
   }
 
   async function toggle(t: Traveler) {
-    await supabase.from('travelers').update({ active: !t.active, updated_at: new Date().toISOString() }).eq('id', t.id);
+    await supabase.from('travel_app_travelers').update({ active: !t.active, updated_at: new Date().toISOString() }).eq('id', t.id);
     load();
   }
 

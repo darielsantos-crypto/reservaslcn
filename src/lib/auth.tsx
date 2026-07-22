@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function loadProfile(uid: string) {
     const { data, error } = await supabase
-      .from('profiles')
+      .from('travel_app_profiles')
       .select('*')
       .eq('id', uid)
       .maybeSingle();
@@ -102,10 +102,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) return { error: error.message };
     if (data.user) {
-      await supabase.from('profiles').insert({
+      await supabase.from('travel_app_profiles').insert({
         id: data.user.id,
-        name: fullName,
-        login: email.split('@')[0],
         full_name: fullName,
         email,
         role: 'solicitante',

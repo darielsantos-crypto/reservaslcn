@@ -21,7 +21,7 @@ export function WorksitesScreen() {
   const [form, setForm] = useState(empty);
 
   async function load() {
-    const { data } = await supabase.from('worksites').select('*').order('name');
+    const { data } = await supabase.from('travel_app_worksites').select('*').order('name');
     setRows((data ?? []) as Worksite[]);
     setLoading(false);
   }
@@ -33,16 +33,16 @@ export function WorksitesScreen() {
   async function save() {
     if (!profile) return;
     if (editing) {
-      await supabase.from('worksites').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editing.id);
+      await supabase.from('travel_app_worksites').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editing.id);
     } else {
-      await supabase.from('worksites').insert({ ...form, created_by: profile.id });
+      await supabase.from('travel_app_worksites').insert({ ...form, created_by: profile.id });
     }
     setOpen(false);
     load();
   }
 
   async function toggle(w: Worksite) {
-    await supabase.from('worksites').update({ active: !w.active, updated_at: new Date().toISOString() }).eq('id', w.id);
+    await supabase.from('travel_app_worksites').update({ active: !w.active, updated_at: new Date().toISOString() }).eq('id', w.id);
     load();
   }
 
