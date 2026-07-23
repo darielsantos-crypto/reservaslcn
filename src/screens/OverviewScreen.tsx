@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from '@/lib/router';
 import { Card } from '@/components/ui/Card';
 import { PageLoader } from '@/components/ui/Feedback';
-import type { TravelRequest, TravelSegment, Worksite } from '@/lib/types';
+import type { TravelRequest, TravelSegment, Accommodation, Worksite } from '@/lib/types';
 
 type Row = TravelRequest & { worksite?: Worksite | null };
 
@@ -13,6 +13,7 @@ export function OverviewScreen() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
   const [segments, setSegments] = useState<Record<string, TravelSegment[]>>({});
+  const [accommodations, setAccommodations] = useState<Record<string, Accommodation[]>>({});
   const [counts, setCounts] = useState({ users: 0, worksites: 0, travelers: 0 });
 
   useEffect(() => {
@@ -30,6 +31,10 @@ export function OverviewScreen() {
       const sm: Record<string, TravelSegment[]> = {};
       reqs.forEach((row, i) => (sm[row.id] = (segs[i].data ?? []) as TravelSegment[]));
       setSegments(sm);
+      const accs = await Promise.all(reqs.map((row) => supabase.from('travel_app_accommodations').select('*').eq('request_id', row.id).limit(1)));
+      const am: Record<string, Accommodation[]> = {};
+      reqs.forEach((row, i) => (am[row.id] = (accs[i].data ?? []) as Accommodation[]));
+      setAccommodations(am);
       setLoading(false);
     })();
   }, []);
@@ -55,7 +60,7 @@ export function OverviewScreen() {
         <Stat icon={ShoppingCart} label="Orçados" value={statusCounts['orcado'] ?? 0} tone="blue" onClick={() => navigate('all-requests')} />
         <Stat icon={CheckCircle2} label="Finalizadas" value={statusCounts['finalizada'] ?? 0} tone="emerald" onClick={() => navigate('all-requests')} />
         <Stat icon={AlertTriangle} label="Fora do prazo" value={rows.filter((r) => r.deadline_status === 'fora').length} tone="red" onClick={() => navigate('all-requests')} />
-        <Stat icon={CalendarClock} label="Próximas viagens" value={rows.filter((r) => { const s = segments[r.id]?.[0]; return s?.departure_date && new Date(s.departure_date) >= new Date(); }).length} tone="gray" onClick={() => navigate('upcoming')} />
+        <Stat icon={CalendarClock} label="Próximas viagens" value={rows.filter((r) => { const s = segments[r.id]?.[0]; const a=accommodations[r.id]?.[0]; const d=s?.departure_date||a?.check_in; return d && new Date(d) >= new Date(); }).length} tone="gray" onClick={() => navigate('upcoming')} />
         <Stat icon={Users} label="Usuários" value={counts.users} tone="blue" onClick={() => navigate('users')} />
         <Stat icon={Building2} label="Obras" value={counts.worksites} tone="gray" onClick={() => navigate('worksites')} />
       </div>
@@ -66,10 +71,11 @@ export function OverviewScreen() {
           <div className="divide-y divide-gray-100">
             {rows.slice(0, 8).map((r) => {
               const seg = segments[r.id]?.[0];
+              const acc = accommodations[r.id]?.[0];
               return (
                 <button key={r.id} onClick={() => navigate(`request/${r.id}`)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-left">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{seg ? `${seg.origin} → ${seg.destination}` : r.request_number}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{seg ? `${seg.origin} → ${seg.destination}` : acc ? `Hospedagem em ${acc.city ?? 'local a definir'}` : r.request_number}</p>
                     <p className="text-xs text-gray-500">{r.request_number} · {r.worksite?.name ?? '—'}</p>
                   </div>
                   <span className="text-xs text-gray-500 shrink-0">{STATUS_LABELS_SHORT[r.status]}</span>

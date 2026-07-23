@@ -1,44 +1,86 @@
 # Lucena — Gestão de Viagens
 
-Sistema simples para as obras solicitarem passagem, hospedagem ou ambos, e para a Gestão de Viagens organizar a cotação, compra, anexos e andamento.
+Sistema operacional para as obras solicitarem **passagem**, **hospedagem** ou **passagem + hospedagem**, com triagem, orçamento, compra e acompanhamento em uma única plataforma.
 
-## O sistema não possui cadastro de fornecedores
-A companhia aérea, empresa rodoviária, hotel ou agência é informada diretamente no atendimento da solicitação, quando necessário. Não existe menu nem tabela de fornecedores no aplicativo.
+## Fluxo
 
-## Perfis
-- Solicitante: cria e acompanha solicitações.
-- Gestão de Viagens: recebe a fila, registra cotação/compra e finaliza. Pode cadastrar usuários, mas não excluir.
-- Super Administrador: acompanha tudo e mantém obras, usuários, regras e configurações.
+`Pedido recebido → Em andamento → Orçado → Aprovado → Finalizado`
 
-## Banco isolado
-O aplicativo utiliza apenas tabelas `travel_app_*` e não consulta nem altera as tabelas do sistema de Suprimentos. O único recurso compartilhado é `auth.users`, para login.
+- **Solicitante:** solicita e acompanha seus pedidos.
+- **Gestão de Viagens:** faz triagem, orçamento, compra e finalização; também cadastra usuários e obras.
+- **Super Administrador:** acompanha tudo e mantém os cadastros.
 
-## Migrações
-Execute os arquivos de `supabase/migrations` em ordem. Se as duas primeiras já foram executadas, execute apenas:
+## Regras de interface
 
-`20260722100000_0003_REMOVE_SUPPLIERS_MODULE.sql`
+- Pedido de **somente hospedagem** não exibe transporte, origem/destino, voo, ônibus ou bagagem.
+- Pedido de **somente passagem** não exibe dados de hotel.
+- Pedido de **passagem + hospedagem** reúne os dois blocos.
+- A fila de atendimento é uma tabela no desktop e uma lista compacta no celular.
+- Não existe menu de fornecedores nem menu separado de colaboradores.
+- Os dados do viajante são preenchidos dentro da própria solicitação.
+- O menu contém somente solicitar, acompanhar, triar/comprar, usuários, obras e política/ajuda conforme o perfil.
+
+## Isolamento do Suprimentos
+
+O aplicativo utiliza somente tabelas com prefixo `travel_app_*`.
+
+O `auth.users` é compartilhado apenas para login. Ao remover alguém do sistema de Viagens, a API exclui **somente `travel_app_profiles`** e preserva a conta do Auth e qualquer acesso a outros sistemas.
+
+## Banco de dados
+
+Em uma instalação nova, execute os arquivos de `supabase/migrations` em ordem.
+
+Em uma instalação que já recebeu as versões anteriores, confirme que foi executada a migração:
+
+```text
+supabase/migrations/20260722130000_0004_SIMPLIFY_TRAVEL_FLOW.sql
+```
+
+Esta versão do front-end não exige SQL adicional além dela.
+
+Nunca execute os arquivos de:
+
+```text
+supabase/legacy_migrations_DO_NOT_RUN
+```
+
+## Variáveis da Vercel
+
+```text
+VITE_SUPABASE_URL
+VITE_SUPABASE_PUBLISHABLE_KEY
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+A chave secreta deve existir somente na Vercel e nunca pode receber prefixo `VITE_`.
 
 ## Deploy
-- Framework: Vite
-- Build: `npm run build`
-- Saída: `dist`
-- Variáveis: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
+- Framework Preset: `Vite`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Root Directory: vazio
 
-## API de cadastro de usuários na Vercel
+Depois do envio ao GitHub, faça um novo deploy sem reutilizar o cache.
 
-O projeto inclui as rotas `/api/admin/users` e `/api/create-user` (compatibilidade). Configure em **Vercel > Settings > Environment Variables**:
+## API de usuários
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
+As rotas abaixo ficam na pasta `api` da raiz:
 
-Depois faça um novo deploy sem cache. Ao abrir `/api/create-user` pelo navegador, o retorno esperado é HTTP 405 (Método não permitido), confirmando que a função foi publicada.
+```text
+/api/admin/users
+/api/create-user
+```
 
-## Atualização do fluxo simplificado
-Após as migrações anteriores, execute também:
+Ao abrir `/api/create-user` diretamente no navegador, o retorno esperado é HTTP `405`, pois a criação de usuário aceita apenas `POST`.
 
-`supabase/migrations/20260722130000_0004_SIMPLIFY_TRAVEL_FLOW.sql`
+## Validação desta entrega
 
-Ela simplifica a jornada para Pedido recebido → Em andamento → Orçado → Aprovado → Finalizado, impede a Gestão de Viagens de visualizar o Super Administrador e acrescenta os campos de voo/horários na compra. Não altera nenhuma tabela do Suprimentos.
+Foram executados com sucesso:
+
+```text
+TypeScript: sem erros
+ESLint: sem erros e sem avisos
+Build Vite de produção: concluído
+```

@@ -5,7 +5,6 @@ import { useRouter } from '@/lib/router';
 import { NAV_ITEMS, ROLE_LABELS } from '@/lib/nav';
 import { cn } from '@/lib/helpers';
 import { useNotifications } from '@/lib/hooks';
-import { Button } from '@/components/ui/Button';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { profile, signOut } = useAuth();

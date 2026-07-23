@@ -76,7 +76,7 @@ export async function fetchRequestDetail(id: string): Promise<RequestWithRelatio
     ]);
 
   const travelerIds = (trt.data ?? []).map((r) => r.traveler_id).filter(Boolean);
-  let travelersMap: Record<string, Traveler> = {};
+  const travelersMap: Record<string, Traveler> = {};
   if (travelerIds.length) {
     const { data: tdata } = await supabase
       .from('travel_app_travelers')
@@ -88,7 +88,7 @@ export async function fetchRequestDetail(id: string): Promise<RequestWithRelatio
   const authorIds = Array.from(
     new Set((com.data ?? []).map((c) => c.author_id).filter(Boolean))
   );
-  let authorsMap: Record<string, Profile> = {};
+  const authorsMap: Record<string, Profile> = {};
   if (authorIds.length) {
     const { data: adata } = await supabase
       .from('travel_app_profiles')
@@ -100,7 +100,7 @@ export async function fetchRequestDetail(id: string): Promise<RequestWithRelatio
   const histUserIds = Array.from(
     new Set((hist.data ?? []).map((h) => h.user_id).filter(Boolean))
   );
-  let histUsersMap: Record<string, Profile> = {};
+  const histUsersMap: Record<string, Profile> = {};
   if (histUserIds.length) {
     const { data: hudata } = await supabase
       .from('travel_app_profiles')

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@supabase/supabase-js';
 
 type Role = 'solicitante' | 'gestao_viagens' | 'super_admin';
@@ -41,8 +42,7 @@ export default async function handler(req: any, res: any) {
     .eq('id', userData.user.id)
     .maybeSingle();
 
-  const actorRole = actor?.role === 'superadmin' || actor?.role === 'admin' ? 'super_admin' : actor?.role;
-  if (actorError || !actor || !actor.active || !['gestao_viagens', 'super_admin'].includes(actorRole)) {
+  if (actorError || !actor || !actor.active || !['gestao_viagens', 'super_admin'].includes(actor.role)) {
     return json(res, 403, { error: 'Você não possui permissão para gerenciar usuários.' });
   }
 
@@ -52,24 +52,47 @@ export default async function handler(req: any, res: any) {
     if (!body.email || !body.password || !body.full_name) {
       return json(res, 400, { error: 'Nome, e-mail e senha temporária são obrigatórios.' });
     }
-    if (role === 'super_admin' && actorRole !== 'super_admin') {
+    if (role === 'super_admin' && actor.role !== 'super_admin') {
       return json(res, 403, { error: 'Somente o Super Administrador pode criar outro Super Administrador.' });
     }
 
-    const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email: String(body.email).trim().toLowerCase(),
-      password: String(body.password),
-      email_confirm: true,
-      user_metadata: { full_name: body.full_name },
-    });
-    if (createError || !created.user) {
-      return json(res, 400, { error: createError?.message ?? 'Não foi possível criar o usuário no Supabase Auth.', stage: 'auth.createUser' });
+    const normalizedEmail = String(body.email).trim().toLowerCase();
+    let authUserId = '';
+    let createdNewAuthUser = false;
+
+    // O Auth é compartilhado com outros sistemas. Se o e-mail já existir,
+    // apenas vinculamos o usuário ao módulo de Viagens e preservamos sua senha.
+    const { data: listed, error: listError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (listError) return json(res, 400, { error: listError.message, stage: 'auth.listUsers' });
+    const existing = listed.users.find((user) => user.email?.toLowerCase() === normalizedEmail);
+
+    if (existing) {
+      authUserId = existing.id;
+      const { data: existingTravelProfile } = await admin
+        .from('travel_app_profiles')
+        .select('id')
+        .eq('id', existing.id)
+        .maybeSingle();
+      if (existingTravelProfile) {
+        return json(res, 409, { error: 'Este e-mail já está cadastrado no sistema de Viagens.' });
+      }
+    } else {
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
+        email: normalizedEmail,
+        password: String(body.password),
+        email_confirm: true,
+        user_metadata: { full_name: body.full_name },
+      });
+      if (createError || !created.user) {
+        return json(res, 400, { error: createError?.message ?? 'Não foi possível criar o usuário no Supabase Auth.', stage: 'auth.createUser' });
+      }
+      authUserId = created.user.id;
+      createdNewAuthUser = true;
     }
 
-    const normalizedEmail = String(created.user.email ?? body.email).trim().toLowerCase();
-    const { error: profileError } = await admin.from('travel_app_profiles').upsert({
-      id: created.user.id,
-      full_name: body.full_name,
+    const { error: profileError } = await admin.from('travel_app_profiles').insert({
+      id: authUserId,
+      full_name: String(body.full_name).trim(),
       registration: body.registration || null,
       email: normalizedEmail,
       phone: body.phone || null,
@@ -80,30 +103,44 @@ export default async function handler(req: any, res: any) {
       active: true,
       created_by: actor.id,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' });
+    });
 
     if (profileError) {
-      await admin.auth.admin.deleteUser(created.user.id);
-      return json(res, 400, { error: `Usuário criado no Auth, mas o perfil falhou: ${profileError.message}`, stage: 'profiles.upsert' });
+      if (createdNewAuthUser) await admin.auth.admin.deleteUser(authUserId);
+      return json(res, 400, { error: `Não foi possível criar o perfil de Viagens: ${profileError.message}`, stage: 'profiles.insert' });
     }
 
     if (Array.isArray(body.worksiteIds) && body.worksiteIds.length) {
-      await admin.from('travel_app_user_worksites').insert(
-        body.worksiteIds.map((worksite_id: string) => ({ user_id: created.user.id, worksite_id })),
+      const { error: worksiteError } = await admin.from('travel_app_user_worksites').insert(
+        body.worksiteIds.map((worksite_id: string) => ({ user_id: authUserId, worksite_id })),
       );
+      if (worksiteError) {
+        await admin.from('travel_app_profiles').delete().eq('id', authUserId);
+        if (createdNewAuthUser) await admin.auth.admin.deleteUser(authUserId);
+        return json(res, 400, { error: `Não foi possível vincular as obras: ${worksiteError.message}`, stage: 'worksites.insert' });
+      }
     }
 
-    return json(res, 201, { ok: true, user_id: created.user.id });
+    return json(res, 201, {
+      ok: true,
+      user_id: authUserId,
+      existing_auth: !createdNewAuthUser,
+      message: createdNewAuthUser
+        ? 'Usuário criado com sucesso.'
+        : 'Usuário vinculado ao sistema de Viagens. A senha já existente foi preservada.',
+    });
   }
 
   const userId = String(req.query?.id ?? req.body?.id ?? '');
   if (!userId) return json(res, 400, { error: 'Usuário não informado.' });
-  if (actorRole !== 'super_admin') {
-    return json(res, 403, { error: 'Somente o Super Administrador pode excluir usuários.' });
+  if (actor.role !== 'super_admin') {
+    return json(res, 403, { error: 'Somente o Super Administrador pode remover usuários.' });
   }
-  if (userId === actor.id) return json(res, 400, { error: 'Você não pode excluir o próprio usuário.' });
+  if (userId === actor.id) return json(res, 400, { error: 'Você não pode remover o próprio usuário.' });
 
-  const { error } = await admin.auth.admin.deleteUser(userId);
-  if (error) return json(res, 400, { error: error.message });
-  return json(res, 200, { ok: true });
+  // Remove somente o acesso ao sistema de Viagens. A conta do Auth e qualquer
+  // acesso a outros sistemas da Lucena permanecem intactos.
+  const { error: profileDeleteError } = await admin.from('travel_app_profiles').delete().eq('id', userId);
+  if (profileDeleteError) return json(res, 400, { error: profileDeleteError.message });
+  return json(res, 200, { ok: true, message: 'Acesso removido somente do sistema de Viagens.' });
 }

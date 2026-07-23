@@ -44,8 +44,9 @@ export const NAV_ITEMS: NavItem[] = [
   // Super Administrador
   { id: 'overview', label: 'Acompanhamento', shortLabel: 'Visão geral', icon: Home, roles: ['super_admin'], mobile: true },
   { id: 'all-requests', label: 'Triagem e compras', shortLabel: 'Triagem', icon: Inbox, roles: ['super_admin'], mobile: true },
+  { id: 'new-request', label: 'Solicitar viagem', shortLabel: 'Solicitar', icon: PlusCircle, roles: ['super_admin'], mobile: true },
   { id: 'users', label: 'Cadastrar usuários', shortLabel: 'Usuários', icon: Users, roles: ['super_admin'], mobile: true },
-  { id: 'worksites', label: 'Cadastrar obras', shortLabel: 'Obras', icon: Building2, roles: ['super_admin'], mobile: true },
+  { id: 'worksites', label: 'Cadastrar obras', shortLabel: 'Obras', icon: Building2, roles: ['super_admin'] },
   { id: 'policy', label: 'Política e ajuda', icon: HelpCircle, roles: ['super_admin'] },
 ];
 

@@ -1,88 +1,93 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Filter } from 'lucide-react';
+import { BedDouble, CalendarDays, ChevronRight, Filter, Plane, Search } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from '@/lib/router';
 import { supabase } from '@/lib/supabase';
-import { RequestCard } from '@/components/RequestCard';
-import { PageLoader, EmptyState } from '@/components/ui/Feedback';
+import { Badge } from '@/components/ui/Badge';
+import { EmptyState, PageLoader } from '@/components/ui/Feedback';
 import { Input, Select } from '@/components/ui/Field';
-import { STATUS_LABELS } from '@/lib/constants';
-import type { TravelRequest, TravelSegment, Worksite } from '@/lib/types';
+import { DEADLINE_LABELS, DEADLINE_STYLES, STATUS_LABELS, STATUS_STYLES } from '@/lib/constants';
+import { formatDateBR, requestTypeLabel } from '@/lib/helpers';
+import type { Accommodation, DeadlineStatus, RequestStatus, RequestType, TravelRequest, TravelSegment, Worksite } from '@/lib/types';
 
-type Row = TravelRequest & { worksite?: Worksite | null };
+type Row = TravelRequest & {
+  worksite?: Worksite | null;
+  segment?: TravelSegment[];
+  accommodation?: Accommodation[];
+  travelers?: Array<{ traveler?: { full_name: string } | null }>;
+};
 
 export function MyRequestsScreen() {
   const { profile } = useAuth();
   const { navigate } = useRouter();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
-  const [segments, setSegments] = useState<Record<string, TravelSegment[]>>({});
-  const [names, setNames] = useState<Record<string, string>>({});
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!profile) return;
-    (async () => {
-      const { data } = await supabase
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
         .from('travel_app_requests')
-        .select('*, worksite:travel_app_worksites(*)')
+        .select(`
+          *,
+          worksite:travel_app_worksites(*),
+          segment:travel_app_segments(*),
+          accommodation:travel_app_accommodations(*),
+          travelers:travel_app_request_travelers(traveler:travel_app_travelers(full_name))
+        `)
         .eq('requester_id', profile.id)
+        .neq('status', 'rascunho')
         .order('updated_at', { ascending: false });
-      const r = (data ?? []) as Row[];
-      setRows(r);
-      const segs = await Promise.all(
-        r.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1))
-      );
-      const segMap: Record<string, TravelSegment[]> = {};
-      r.forEach((row, i) => (segMap[row.id] = (segs[i].data ?? []) as TravelSegment[]));
-      setSegments(segMap);
-      const trts = await Promise.all(
-        r.map((row) =>
-          supabase.from('travel_app_request_travelers').select('traveler:travel_app_travelers(full_name)').eq('request_id', row.id).limit(1)
-        )
-      );
-      const nm: Record<string, string> = {};
-      r.forEach((row, i) => {
-        const t = trts[i].data?.[0] as any;
-        nm[row.id] = t?.traveler?.full_name ?? '—';
-      });
-      setNames(nm);
+      if (!active) return;
+      if (error) console.error('Falha ao carregar solicitações:', error);
+      setRows((data ?? []) as unknown as Row[]);
       setLoading(false);
-    })();
+    };
+    void load();
+    return () => { active = false; };
   }, [profile]);
 
   const filtered = useMemo(() => {
-    return rows.filter((r) => {
-      if (status && r.status !== status) return false;
-      if (search) {
-        const seg = segments[r.id]?.[0];
-        const route = seg ? `${seg.origin} ${seg.destination}` : '';
-        const hay = `${r.request_number ?? ''} ${route} ${names[r.id] ?? ''}`.toLowerCase();
-        if (!hay.includes(search.toLowerCase())) return false;
-      }
-      return true;
+    const normalized = search.trim().toLowerCase();
+    return rows.filter((row) => {
+      if (status && row.status !== status) return false;
+      if (!normalized) return true;
+      const segment = row.segment?.[0];
+      const accommodation = row.accommodation?.[0];
+      const names = row.travelers?.map((item) => item.traveler?.full_name).filter(Boolean).join(' ') || '';
+      return [
+        row.request_number,
+        row.worksite?.name,
+        segment?.origin,
+        segment?.destination,
+        accommodation?.city,
+        names,
+      ].filter(Boolean).join(' ').toLowerCase().includes(normalized);
     });
-  }, [rows, status, search, segments, names]);
+  }, [rows, search, status]);
 
   if (loading) return <PageLoader />;
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">Minhas solicitações</h1>
-        <p className="text-sm text-gray-500">{filtered.length} solicitação(ões)</p>
-      </div>
+      <header>
+        <h1 className="text-xl font-semibold text-gray-900">Acompanhar pedidos</h1>
+        <p className="text-sm text-gray-500">Consulte o andamento e os dados liberados de cada viagem.</p>
+      </header>
 
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por número, rota, colaborador..." className="pl-9" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar protocolo, rota ou viajante" className="pl-9" />
         </div>
-        <Select value={status} onChange={(e) => setStatus(e.target.value)} className="sm:w-56">
+        <Select value={status} onChange={(event) => setStatus(event.target.value)} className="sm:w-56">
           <option value="">Todos os status</option>
-          {Object.entries(STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+          {Object.entries(STATUS_LABELS).filter(([key]) => key !== 'rascunho').map(([key, label]) => (
+            <option key={key} value={key}>{label}</option>
           ))}
         </Select>
       </div>
@@ -90,16 +95,47 @@ export function MyRequestsScreen() {
       {filtered.length === 0 ? (
         <EmptyState icon={<Filter className="h-8 w-8" />} title="Nenhuma solicitação encontrada" description="Ajuste os filtros ou crie uma nova solicitação." />
       ) : (
-        <div className="grid sm:grid-cols-2 gap-3">
-          {filtered.map((r) => (
-            <RequestCard
-              key={r.id}
-              request={r}
-              segments={segments[r.id]}
-              travelers={[{ traveler: { full_name: names[r.id] } }]}
-              onClick={() => navigate(`request/${r.id}`)}
-            />
-          ))}
+        <div className="overflow-hidden rounded-2xl border bg-white">
+          {filtered.map((row) => {
+            const segment = row.segment?.[0];
+            const accommodation = row.accommodation?.[0];
+            const date = segment?.departure_date || accommodation?.check_in || null;
+            const title = segment
+              ? `${segment.origin} → ${segment.destination}`
+              : `Hospedagem em ${accommodation?.city || 'local a definir'}`;
+            const travelers = row.travelers?.map((item) => item.traveler?.full_name).filter(Boolean).join(', ') || 'Viajante não informado';
+            return (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() => navigate(`request/${row.id}`)}
+                className="w-full border-b px-4 py-4 text-left last:border-b-0 hover:bg-gray-50"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#004883]/10 text-[#004883]">
+                    {row.request_type === 'hospedagem' ? <BedDouble className="h-5 w-5" /> : <Plane className="h-5 w-5" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-gray-900">{title}</p>
+                        <p className="mt-0.5 truncate text-sm text-gray-500">{travelers}</p>
+                      </div>
+                      <Badge className={STATUS_STYLES[row.status as RequestStatus]}>{STATUS_LABELS[row.status as RequestStatus]}</Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
+                      <span className="font-mono">{row.request_number}</span>
+                      <span className="flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />{formatDateBR(date)}</span>
+                      <span>{row.worksite?.name || 'Sem obra'}</span>
+                      <span>{requestTypeLabel(row.request_type as RequestType)}</span>
+                      <Badge className={DEADLINE_STYLES[row.deadline_status as DeadlineStatus]}>{DEADLINE_LABELS[row.deadline_status as DeadlineStatus]}</Badge>
+                    </div>
+                  </div>
+                  <ChevronRight className="mt-2 h-5 w-5 shrink-0 text-gray-400" />
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
