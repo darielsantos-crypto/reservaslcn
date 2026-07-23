@@ -117,10 +117,10 @@ export function AuthScreen() {
 
         <div className="relative z-10 mt-20 max-w-xl xl:mt-24">
           <h1 className="text-3xl font-bold leading-tight xl:text-4xl">
-            Da solicitação à emissão, organize cada viagem em um só lugar.
+            Gestão de Passagens e Hospedagens Lucena.
           </h1>
           <p className="mt-5 max-w-lg text-base leading-relaxed text-white/80 xl:text-lg">
-            Registre passagens e hospedagens, acompanhe os prazos da política e consulte o andamento da compra sem depender de e-mails dispersos.
+            Organize suas viagens com a Lucena de forma simples e centralizada. Solicite passagens e hospedagens, acompanhe os prazos e consulte cada etapa do processo, desde a solicitação até a emissão.
           </p>
         </div>
 
@@ -131,7 +131,7 @@ export function AuthScreen() {
           className="absolute bottom-8 left-10 z-20 inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-white/75 transition hover:bg-white/10 hover:text-white"
         >
           <FileText className="h-4 w-4" />
-          Política de Viagens Corporativas
+          Acesse aqui a Política de Viagens Corporativas
         </a>
 
         <img
@@ -248,7 +248,7 @@ export function AuthScreen() {
             </div>
             <h3 className="mt-4 text-lg font-semibold text-gray-900">Solicitação enviada</h3>
             <p className="mt-2 max-w-md text-sm leading-relaxed text-gray-600">
-              A Gestão de Viagens analisará os dados. Após a liberação, o acesso será criado e comunicado pela empresa.
+              Seus dados estão em validação. Após a liberação, o acesso será criado e comunicado.
             </p>
           </div>
         ) : (
