@@ -24,23 +24,16 @@ export function UpcomingScreen() {
         .not('status', 'in', '("cancelada","nao_atendida")')
         .order('updated_at', { ascending: false });
       const r = (data ?? []) as Row[];
-      const [segs, accs] = await Promise.all([
-        Promise.all(r.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1))),
-        Promise.all(r.map((row) => supabase.from('travel_app_accommodations').select('city,check_in,check_out').eq('request_id', row.id).limit(1)))
-      ]);
+      const segs = await Promise.all(r.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1)));
       const sm: Record<string, TravelSegment[]> = {};
-      r.forEach((row, i) => {
-        const found=(segs[i].data ?? []) as TravelSegment[];
-        const a=(accs[i].data ?? [])[0] as any;
-        sm[row.id]=found.length?found:(a?[{id:`hotel-${row.id}`,request_id:row.id,segment_order:1,origin:'Hospedagem',destination:a.city,direction:'ida_e_volta',departure_date:a.check_in,return_date:a.check_out,transport_mode:null,preferred_period:null,flexibility:null,notes:null,created_at:''} as TravelSegment]:[]);
-      });
+      r.forEach((row, i) => (sm[row.id] = (segs[i].data ?? []) as TravelSegment[]));
       setSegments(sm);
       const upcoming = r.filter((row) => {
         const s = sm[row.id]?.[0];
         return s?.departure_date && new Date(s.departure_date) >= new Date();
       }).sort((a, b) => {
-        const da = sm[a.id]?.[0]?.departure_date ?? '';
-        const db = sm[b.id]?.[0]?.departure_date ?? '';
+        const da = segments[a.id]?.[0]?.departure_date ?? '';
+        const db = segments[b.id]?.[0]?.departure_date ?? '';
         return da.localeCompare(db);
       });
       setRows(upcoming);
@@ -66,7 +59,7 @@ export function UpcomingScreen() {
       {rows.length === 0 ? (
         <EmptyState icon={<CalendarClock className="h-8 w-8" />} title="Nenhuma viagem próxima" />
       ) : (
-        <div className="rounded-2xl border bg-white divide-y">
+        <div className="grid sm:grid-cols-2 gap-3">
           {rows.map((r) => (
             <RequestCard key={r.id} request={r} segments={segments[r.id]} travelers={[{ traveler: { full_name: names[r.id] } }]} onClick={() => navigate(`request/${r.id}`)} />
           ))}

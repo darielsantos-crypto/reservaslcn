@@ -31,16 +31,11 @@ export function MyRequestsScreen() {
         .order('updated_at', { ascending: false });
       const r = (data ?? []) as Row[];
       setRows(r);
-      const [segs, accs] = await Promise.all([
-        Promise.all(r.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1))),
-        Promise.all(r.map((row) => supabase.from('travel_app_accommodations').select('city,check_in,check_out').eq('request_id', row.id).limit(1)))
-      ]);
+      const segs = await Promise.all(
+        r.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1))
+      );
       const segMap: Record<string, TravelSegment[]> = {};
-      r.forEach((row, i) => {
-        const found=(segs[i].data ?? []) as TravelSegment[];
-        const a=(accs[i].data ?? [])[0] as any;
-        segMap[row.id]=found.length?found:(a?[{id:`hotel-${row.id}`,request_id:row.id,segment_order:1,origin:'Hospedagem',destination:a.city,direction:'ida_e_volta',departure_date:a.check_in,return_date:a.check_out,transport_mode:null,preferred_period:null,flexibility:null,notes:null,created_at:''} as TravelSegment]:[]);
-      });
+      r.forEach((row, i) => (segMap[row.id] = (segs[i].data ?? []) as TravelSegment[]));
       setSegments(segMap);
       const trts = await Promise.all(
         r.map((row) =>
@@ -82,7 +77,7 @@ export function MyRequestsScreen() {
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por número, destino ou viajante..." className="pl-9" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por número, rota, colaborador..." className="pl-9" />
         </div>
         <Select value={status} onChange={(e) => setStatus(e.target.value)} className="sm:w-56">
           <option value="">Todos os status</option>
@@ -95,7 +90,7 @@ export function MyRequestsScreen() {
       {filtered.length === 0 ? (
         <EmptyState icon={<Filter className="h-8 w-8" />} title="Nenhuma solicitação encontrada" description="Ajuste os filtros ou crie uma nova solicitação." />
       ) : (
-        <div className="rounded-2xl border bg-white divide-y">
+        <div className="grid sm:grid-cols-2 gap-3">
           {filtered.map((r) => (
             <RequestCard
               key={r.id}
