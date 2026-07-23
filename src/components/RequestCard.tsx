@@ -1,5 +1,5 @@
 import { Plane, Building2, CalendarDays, User } from 'lucide-react';
-import type { TravelRequest, TravelSegment, Worksite, Profile } from '@/lib/types';
+import type { TravelRequest, TravelSegment, Accommodation, Worksite, Profile } from '@/lib/types';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import {
@@ -14,17 +14,17 @@ import { formatDateBR, formatRelative, requestTypeLabel } from '@/lib/helpers';
 interface RequestCardProps {
   request: TravelRequest & { worksite?: Worksite | null };
   segments?: TravelSegment[];
+  accommodations?: Accommodation[];
   travelers?: { traveler?: { full_name: string } | null }[];
   onClick?: () => void;
 }
 
-export function RequestCard({ request, segments, travelers, onClick }: RequestCardProps) {
+export function RequestCard({ request, segments, accommodations, travelers, onClick }: RequestCardProps) {
   const firstSeg = segments?.[0];
-  const route = firstSeg
-    ? `${firstSeg.origin} → ${firstSeg.destination}`
-    : 'Trajeto a definir';
+  const firstAcc = accommodations?.[0];
+  const route = firstSeg ? `${firstSeg.origin} → ${firstSeg.destination}` : firstAcc ? `Hospedagem em ${firstAcc.city ?? 'local a definir'}` : 'Detalhes a definir';
   const travelerName = travelers?.[0]?.traveler?.full_name ?? '—';
-  const date = firstSeg?.departure_date ?? firstSeg?.return_date;
+  const date = firstSeg?.departure_date ?? firstSeg?.return_date ?? firstAcc?.check_in;
 
   return (
     <Card hover={!!onClick} onClick={onClick} className="overflow-hidden">
