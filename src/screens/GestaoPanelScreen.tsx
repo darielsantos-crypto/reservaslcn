@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, BadgeDollarSign, CheckCircle2, Inbox } from 'lucide-react';
+import { Activity, BadgeDollarSign, CheckCircle2, Inbox, UserPlus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from '@/lib/router';
 import { Badge } from '@/components/ui/Badge';
@@ -21,10 +21,12 @@ type PanelRow = {
 export function GestaoPanelScreen() {
   const { navigate } = useRouter();
   const [rows, setRows] = useState<PanelRow[]>([]);
+  const [accessCount, setAccessCount] = useState(0);
 
   useEffect(() => {
     const load = async () => {
-      const { data, error } = await supabase
+      const [requestsResult, accessResult] = await Promise.all([
+        supabase
         .from('travel_app_requests')
         .select(`
           id,
@@ -38,9 +40,16 @@ export function GestaoPanelScreen() {
         `)
         .neq('status', 'rascunho')
         .order('submitted_at', { ascending: true })
-        .limit(50);
-      if (error) console.error(error);
-      setRows((data ?? []) as unknown as PanelRow[]);
+        .limit(50),
+        supabase
+          .from('travel_app_access_requests')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pendente'),
+      ]);
+      if (requestsResult.error) console.error(requestsResult.error);
+      if (accessResult.error) console.error(accessResult.error);
+      setRows((requestsResult.data ?? []) as unknown as PanelRow[]);
+      setAccessCount(accessResult.count ?? 0);
     };
     void load();
   }, []);
@@ -59,6 +68,20 @@ export function GestaoPanelScreen() {
         <h1 className="text-xl font-semibold">Triagem e compras</h1>
         <p className="text-sm text-gray-500">Visão rápida dos pedidos que precisam de atendimento.</p>
       </header>
+
+      {accessCount > 0 && (
+        <button
+          type="button"
+          onClick={() => navigate('users')}
+          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left hover:bg-amber-100"
+        >
+          <span className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-amber-700"><UserPlus className="h-5 w-5" /></span>
+            <span><b className="block text-sm text-gray-900">{accessCount} solicitação{accessCount > 1 ? 'ões' : ''} de acesso</b><span className="text-xs text-gray-600">Analisar cadastro enviado pela tela de login.</span></span>
+          </span>
+          <span className="text-sm font-semibold text-[#004883]">Analisar</span>
+        </button>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map(({ icon: Icon, label, value }) => (

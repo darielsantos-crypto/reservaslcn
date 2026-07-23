@@ -1,5 +1,27 @@
 export type Role = 'solicitante' | 'gestao_viagens' | 'super_admin';
 
+
+export type AccessRequestStatus = 'pendente' | 'aprovada' | 'rejeitada';
+
+export interface AccessRequest {
+  id: string;
+  requester_name: string;
+  registration: string | null;
+  email: string;
+  phone: string | null;
+  position: string | null;
+  worksite_name: string;
+  cost_center: string | null;
+  city: string;
+  state: string;
+  status: AccessRequestStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type WorksiteStatus = 'ativa' | 'inativa' | 'encerrada';
 
 export type TravelerType = 'colaborador' | 'terceiro' | 'necessidades_especiais';

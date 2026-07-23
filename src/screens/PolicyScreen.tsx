@@ -1,50 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, HelpCircle, FileText, Phone } from 'lucide-react';
+import { Search, HelpCircle, FileText, Phone, ExternalLink } from 'lucide-react';
 import { fetchFaq, fetchPolicyRules } from '@/lib/queries';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
 import { PageLoader, EmptyState } from '@/components/ui/Feedback';
 import { FAQ_CATEGORIES, FAQ_CATEGORY_LABELS } from '@/lib/constants';
 import { cn } from '@/lib/helpers';
 import type { FaqItem, PolicyRule } from '@/lib/types';
 
-const POLICY_TEXT = `# Política de Viagens Corporativas — Lucena Infraestrutura
-
-## 1. Prazos de solicitação
-- Baixadas, admissões, retornos, transferências e demais viagens nacionais: 30 dias corridos.
-- Viagens internacionais: 60 dias corridos.
-- Diretoria Executiva e Gerências — nacional: 15 dias corridos.
-- Diretoria Executiva e Gerências — internacional: 30 dias corridos.
-- Viagens emergenciais: assim que a necessidade for identificada.
-
-## 2. Solicitação fora do prazo
-Pedidos fora do prazo podem ser registrados com justificativa e nome do responsável que orientou ou autorizou. O atendimento pode ter opções limitadas ou custos maiores.
-
-## 3. Terceiros
-Viagens para terceiros exigem autorização prévia da Diretoria Executiva. O sistema registra a confirmação.
-
-## 4. Hospedagem
-A reserva é realizada pela Lucena ou pela agência oficial. Não reserve hotel por conta própria, salvo autorização expressa.
-
-## 5. Bagagem
-Bagagem adicional, ferramentas, equipamentos, uniformes e EPIs devem ser informados antes da emissão.
-
-## 6. Adiantamento
-Solicite preferencialmente junto com a viagem, com 7 dias corridos de antecedência e, no mínimo, 2 dias úteis antes da viagem.
-
-## 7. Alterações pós-emissão
-Remarcações, cancelamentos, bagagens e alterações devem ser tratadas pelo canal da agência oficial.
-
-## 8. Compras por conta própria
-Não compre passagens por conta própria, salvo autorização expressa.
-
-## 9. Aeroporto
-Apresente-se com 2 horas de antecedência para voos nacionais e 3 horas para internacionais.
-
-## 10. Prestação de contas
-Até 10 dias corridos após o retorno.`;
 
 export function PolicyScreen() {
   const [faq, setFaq] = useState<FaqItem[]>([]);
@@ -52,7 +16,6 @@ export function PolicyScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
-  const [showFull, setShowFull] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchFaq(), fetchPolicyRules()]).then(([f, r]) => {
@@ -142,14 +105,9 @@ export function PolicyScreen() {
         </div>
       </Card>
 
-      <Button variant="outline" onClick={() => setShowFull(true)}>Ver Política completa</Button>
-
-      {showFull && (
-        <Modal open={showFull} onClose={() => setShowFull(false)} title="Política de Viagens" size="lg"
-          footer={<Button variant="outline" onClick={() => setShowFull(false)}>Fechar</Button>}>
-          <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{POLICY_TEXT}</pre>
-        </Modal>
-      )}
+      <Button variant="outline" onClick={() => window.open('/politica-de-viagens.pdf', '_blank', 'noopener,noreferrer')}>
+        <FileText className="h-4 w-4" /> Ver Política completa <ExternalLink className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

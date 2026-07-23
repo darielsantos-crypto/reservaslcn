@@ -1,6 +1,16 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from 'react';
-import { Pencil, Plus, Power, Search, Trash2, Users } from 'lucide-react';
+import {
+  Check,
+  ClipboardCheck,
+  Pencil,
+  Plus,
+  Power,
+  Search,
+  Trash2,
+  Users,
+  XCircle,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
@@ -9,7 +19,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState, PageLoader } from '@/components/ui/Feedback';
 import { ROLE_LABELS } from '@/lib/nav';
-import type { Profile, Role, Worksite } from '@/lib/types';
+import type { AccessRequest, Profile, Role, Worksite } from '@/lib/types';
 
 type UserForm = {
   full_name: string;
@@ -42,29 +52,15 @@ export function UsersScreen() {
   const isSuperAdmin = profile?.role === 'super_admin';
   const [rows, setRows] = useState<Profile[]>([]);
   const [worksites, setWorksites] = useState<Worksite[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
+  const [sourceRequest, setSourceRequest] = useState<AccessRequest | null>(null);
   const [form, setForm] = useState<UserForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-
-  async function load() {
-    const [profilesResult, worksitesResult] = await Promise.all([
-      supabase.from('travel_app_profiles').select('*').order('full_name'),
-      supabase.from('travel_app_worksites').select('*').eq('active', true).order('name'),
-    ]);
-    if (profilesResult.error) console.error(profilesResult.error);
-    if (worksitesResult.error) console.error(worksitesResult.error);
-
-    let profiles = (profilesResult.data ?? []) as Profile[];
-    if (!isSuperAdmin) profiles = profiles.filter((user) => user.role !== 'super_admin');
-    setRows(profiles);
-    setWorksites((worksitesResult.data ?? []) as Worksite[]);
-    setLoading(false);
-  }
-
-  useEffect(() => { void load(); }, [isSuperAdmin]);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   async function getAccessToken() {
     const sessionResult = await supabase.auth.getSession();
@@ -73,9 +69,69 @@ export function UsersScreen() {
     return refreshed.data.session?.access_token ?? null;
   }
 
+  async function loadPendingRequests() {
+    const token = await getAccessToken();
+    if (!token) return [] as AccessRequest[];
+    const response = await fetch('/api/access-requests?status=pendente', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const result = await response.json() as { items?: AccessRequest[]; error?: string };
+    if (!response.ok) {
+      console.error(result.error || 'Não foi possível carregar as solicitações de acesso.');
+      return [] as AccessRequest[];
+    }
+    return result.items ?? [];
+  }
+
+  async function load() {
+    const [profilesResult, worksitesResult, accessRequests] = await Promise.all([
+      supabase.from('travel_app_profiles').select('*').order('full_name'),
+      supabase.from('travel_app_worksites').select('*').eq('active', true).order('name'),
+      loadPendingRequests(),
+    ]);
+    if (profilesResult.error) console.error(profilesResult.error);
+    if (worksitesResult.error) console.error(worksitesResult.error);
+
+    let profiles = (profilesResult.data ?? []) as Profile[];
+    if (!isSuperAdmin) profiles = profiles.filter((user) => user.role !== 'super_admin');
+    setRows(profiles);
+    setWorksites((worksitesResult.data ?? []) as Worksite[]);
+    setPendingRequests(accessRequests);
+    setLoading(false);
+  }
+
+  useEffect(() => { void load(); }, [isSuperAdmin]);
+
   function openNew() {
     setEditing(null);
+    setSourceRequest(null);
     setForm(EMPTY_FORM);
+    setOpen(true);
+  }
+
+  function openFromRequest(request: AccessRequest) {
+    const matchingWorksites = worksites
+      .filter((worksite) => {
+        const sameName = worksite.name.trim().toLowerCase() === request.worksite_name.trim().toLowerCase();
+        const sameCostCenter = request.cost_center && worksite.cost_center?.trim().toLowerCase() === request.cost_center.trim().toLowerCase();
+        return sameName || Boolean(sameCostCenter);
+      })
+      .map((worksite) => worksite.id);
+
+    setEditing(null);
+    setSourceRequest(request);
+    setForm({
+      full_name: request.requester_name,
+      registration: request.registration ?? '',
+      email: request.email,
+      password: '',
+      phone: request.phone ?? '',
+      position: request.position ?? '',
+      city: request.city,
+      state: request.state,
+      role: 'solicitante',
+      worksiteIds: matchingWorksites,
+    });
     setOpen(true);
   }
 
@@ -85,6 +141,7 @@ export function UsersScreen() {
       .select('worksite_id')
       .eq('user_id', user.id);
     const worksiteIds = (data ?? []).map((item: { worksite_id: string }) => item.worksite_id);
+    setSourceRequest(null);
     setEditing(user);
     setForm({
       full_name: user.full_name,
@@ -110,8 +167,28 @@ export function UsersScreen() {
     }));
   }
 
+  async function updateAccessRequest(id: string, action: 'aprovar' | 'rejeitar') {
+    const token = await getAccessToken();
+    if (!token) throw new Error('Sua sessão expirou. Entre novamente.');
+    const response = await fetch('/api/access-requests', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id, action }),
+    });
+    const result = await response.json() as { error?: string };
+    if (!response.ok) throw new Error(result.error || 'Não foi possível atualizar a solicitação.');
+  }
+
   async function save() {
     if (!profile || !form.full_name.trim() || !form.email.trim() || (!editing && !form.password)) return;
+    if (!editing && form.worksiteIds.length === 0) {
+      alert('Selecione ao menos uma obra permitida para este usuário.');
+      return;
+    }
+
     setSaving(true);
     try {
       if (editing) {
@@ -153,14 +230,29 @@ export function UsersScreen() {
         });
         const result = await response.json() as { error?: string };
         if (!response.ok) throw new Error(result.error ?? 'Não foi possível criar o usuário.');
+        if (sourceRequest) await updateAccessRequest(sourceRequest.id, 'aprovar');
       }
 
       setOpen(false);
+      setSourceRequest(null);
       await load();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Não foi possível salvar o usuário.');
+    } catch (saveError) {
+      alert(saveError instanceof Error ? saveError.message : 'Não foi possível salvar o usuário.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function rejectRequest(request: AccessRequest) {
+    if (!confirm(`Rejeitar a solicitação de acesso de ${request.requester_name}?`)) return;
+    setReviewingId(request.id);
+    try {
+      await updateAccessRequest(request.id, 'rejeitar');
+      await load();
+    } catch (reviewError) {
+      alert(reviewError instanceof Error ? reviewError.message : 'Não foi possível rejeitar a solicitação.');
+    } finally {
+      setReviewingId(null);
     }
   }
 
@@ -197,14 +289,56 @@ export function UsersScreen() {
   ].filter(Boolean).join(' ').toLowerCase().includes(normalizedSearch));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="page-title-row flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Usuários</h1>
-          <p className="text-sm text-gray-500">Defina quem solicita e quais obras cada pessoa pode usar.</p>
+          <h1 className="text-xl font-semibold">Usuários e acessos</h1>
+          <p className="text-sm text-gray-500">Cadastre solicitantes e defina quais obras cada pessoa poderá usar.</p>
         </div>
         <Button onClick={openNew}><Plus className="h-4 w-4" /> Novo usuário</Button>
       </div>
+
+      {pendingRequests.length > 0 && (
+        <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-amber-100 bg-amber-50 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-amber-700" />
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Solicitações de acesso</h2>
+                <p className="text-xs text-gray-600">Pedidos enviados pela tela de login aguardando análise.</p>
+              </div>
+            </div>
+            <Badge className="bg-amber-100 text-amber-800">{pendingRequests.length} pendente{pendingRequests.length > 1 ? 's' : ''}</Badge>
+          </div>
+
+          <div className="divide-y divide-gray-100">
+            {pendingRequests.map((request) => (
+              <div key={request.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[1.3fr_1fr_1fr_auto] lg:items-center">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-gray-900">{request.requester_name}</p>
+                  <p className="truncate text-sm text-gray-600">{request.email}{request.registration ? ` · Matrícula ${request.registration}` : ''}</p>
+                </div>
+                <div className="min-w-0 text-sm">
+                  <p className="truncate font-medium text-gray-800">{request.worksite_name}</p>
+                  <p className="truncate text-gray-500">CC {request.cost_center || 'não informado'}</p>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <p>{request.city}/{request.state}</p>
+                  <p className="truncate text-gray-500">{request.position || 'Cargo não informado'}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <Button size="sm" onClick={() => openFromRequest(request)}>
+                    <Check className="h-4 w-4" /> Preparar cadastro
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={reviewingId === request.id} onClick={() => void rejectRequest(request)}>
+                    <XCircle className="h-4 w-4" /> Rejeitar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -242,11 +376,17 @@ export function UsersScreen() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title={editing ? 'Editar usuário' : 'Novo usuário'}
+        title={editing ? 'Editar usuário' : sourceRequest ? 'Concluir solicitação de acesso' : 'Novo usuário'}
         size="lg"
-        footer={<><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button loading={saving} disabled={!form.full_name.trim() || !form.email.trim() || (!editing && !form.password)} onClick={save}>Salvar</Button></>}
+        footer={<><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button loading={saving} disabled={!form.full_name.trim() || !form.email.trim() || (!editing && (!form.password || form.worksiteIds.length === 0))} onClick={save}>Salvar</Button></>}
       >
         <div className="space-y-4">
+          {sourceRequest && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+              Os dados foram preenchidos a partir da solicitação de acesso para <b>{sourceRequest.worksite_name}</b>. Defina o perfil, a senha temporária e selecione a obra permitida.
+            </div>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2"><Field label="Nome completo" required><Input value={form.full_name} onChange={(event) => setForm({ ...form, full_name: event.target.value })} /></Field></div>
             <Field label="E-mail" required><Input type="email" value={form.email} disabled={Boolean(editing)} onChange={(event) => setForm({ ...form, email: event.target.value })} /></Field>
@@ -266,14 +406,14 @@ export function UsersScreen() {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-medium text-gray-700">Obras permitidas para este usuário</p>
+            <p className="mb-2 text-sm font-medium text-gray-700">Obras permitidas para este usuário <span className="text-red-600">*</span></p>
             <div className="max-h-56 overflow-y-auto rounded-xl border bg-white">
               {worksites.length ? worksites.map((worksite) => (
                 <label key={worksite.id} className="flex cursor-pointer items-start gap-3 border-b px-3 py-3 last:border-b-0 hover:bg-gray-50">
                   <input className="mt-1" type="checkbox" checked={form.worksiteIds.includes(worksite.id)} onChange={() => toggleWorksite(worksite.id)} />
                   <span className="text-sm"><b>{worksite.name}</b><span className="text-gray-500"> · {worksite.city || '—'}/{worksite.state || '—'} · CC {worksite.cost_center || '—'}</span></span>
                 </label>
-              )) : <p className="p-4 text-sm text-gray-500">Cadastre uma obra antes de vincular o usuário.</p>}
+              )) : <p className="p-4 text-sm text-gray-500">Cadastre uma obra antes de concluir o acesso deste usuário.</p>}
             </div>
           </div>
         </div>

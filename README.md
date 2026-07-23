@@ -84,3 +84,14 @@ TypeScript: sem erros
 ESLint: sem erros e sem avisos
 Build Vite de produção: concluído
 ```
+
+## Atualização de login e pedidos de acesso
+
+A tela de login utiliza os arquivos em `public/assets` e o PDF em `public/politica-de-viagens.pdf`.
+Para ativar o formulário público de solicitação de cadastro, execute a migração:
+
+```text
+supabase/migrations/20260723100000_0005_ACCESS_REQUESTS.sql
+```
+
+As solicitações são exibidas em **Usuários e acessos** para os perfis `gestao_viagens` e `super_admin`.

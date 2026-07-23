@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Inbox, Clock, CheckCircle2, AlertTriangle, CalendarClock, ShoppingCart, Users, Building2 } from 'lucide-react';
+import { Inbox, Clock, CheckCircle2, AlertTriangle, CalendarClock, ShoppingCart, Users, Building2, UserPlus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from '@/lib/router';
 import { Card } from '@/components/ui/Card';
@@ -14,19 +14,20 @@ export function OverviewScreen() {
   const [rows, setRows] = useState<Row[]>([]);
   const [segments, setSegments] = useState<Record<string, TravelSegment[]>>({});
   const [accommodations, setAccommodations] = useState<Record<string, Accommodation[]>>({});
-  const [counts, setCounts] = useState({ users: 0, worksites: 0, travelers: 0 });
+  const [counts, setCounts] = useState({ users: 0, worksites: 0, travelers: 0, accessRequests: 0 });
 
   useEffect(() => {
     (async () => {
-      const [r, u, w, t] = await Promise.all([
+      const [r, u, w, t, a] = await Promise.all([
         supabase.from('travel_app_requests').select('*, worksite:travel_app_worksites(*)').neq('status', 'rascunho').order('updated_at', { ascending: false }),
         supabase.from('travel_app_profiles').select('id', { count: 'exact', head: true }),
         supabase.from('travel_app_worksites').select('id', { count: 'exact', head: true }),
         supabase.from('travel_app_travelers').select('id', { count: 'exact', head: true }),
+        supabase.from('travel_app_access_requests').select('id', { count: 'exact', head: true }).eq('status', 'pendente'),
       ]);
       const reqs = (r.data ?? []) as Row[];
       setRows(reqs);
-      setCounts({ users: u.count ?? 0, worksites: w.count ?? 0, travelers: t.count ?? 0 });
+      setCounts({ users: u.count ?? 0, worksites: w.count ?? 0, travelers: t.count ?? 0, accessRequests: a.count ?? 0 });
       const segs = await Promise.all(reqs.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1)));
       const sm: Record<string, TravelSegment[]> = {};
       reqs.forEach((row, i) => (sm[row.id] = (segs[i].data ?? []) as TravelSegment[]));
@@ -53,6 +54,20 @@ export function OverviewScreen() {
         <h1 className="text-lg font-semibold text-gray-900">Visão geral</h1>
         <p className="text-sm text-gray-500">Indicadores da operação</p>
       </div>
+
+      {counts.accessRequests > 0 && (
+        <button
+          type="button"
+          onClick={() => navigate('users')}
+          className="flex w-full items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left hover:bg-amber-100"
+        >
+          <span className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-amber-700"><UserPlus className="h-5 w-5" /></span>
+            <span><b className="block text-sm text-gray-900">{counts.accessRequests} solicitação{counts.accessRequests > 1 ? 'ões' : ''} de acesso pendente{counts.accessRequests > 1 ? 's' : ''}</b><span className="text-xs text-gray-600">Revise os dados e conclua o cadastro do usuário e da obra.</span></span>
+          </span>
+          <span className="text-sm font-semibold text-[#004883]">Abrir</span>
+        </button>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Stat icon={Inbox} label="Pedidos recebidos" value={statusCounts['pedido_recebido'] ?? 0} tone="amber" onClick={() => navigate('all-requests')} />
