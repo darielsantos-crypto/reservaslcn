@@ -26,9 +26,16 @@ export function OverviewScreen() {
       const reqs = (r.data ?? []) as Row[];
       setRows(reqs);
       setCounts({ users: u.count ?? 0, worksites: w.count ?? 0, travelers: t.count ?? 0 });
-      const segs = await Promise.all(reqs.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1)));
+      const [segs, accs] = await Promise.all([
+        Promise.all(reqs.map((row) => supabase.from('travel_app_segments').select('*').eq('request_id', row.id).order('segment_order').limit(1))),
+        Promise.all(reqs.map((row) => supabase.from('travel_app_accommodations').select('city,check_in,check_out').eq('request_id', row.id).limit(1)))
+      ]);
       const sm: Record<string, TravelSegment[]> = {};
-      reqs.forEach((row, i) => (sm[row.id] = (segs[i].data ?? []) as TravelSegment[]));
+      reqs.forEach((row, i) => {
+        const found=(segs[i].data ?? []) as TravelSegment[];
+        const a=(accs[i].data ?? [])[0] as any;
+        sm[row.id]=found.length?found:(a?[{id:`hotel-${row.id}`,request_id:row.id,segment_order:1,origin:'Hospedagem',destination:a.city,direction:'ida_e_volta',departure_date:a.check_in,return_date:a.check_out,transport_mode:null,preferred_period:null,flexibility:null,notes:null,created_at:''} as TravelSegment]:[]);
+      });
       setSegments(sm);
       setLoading(false);
     })();

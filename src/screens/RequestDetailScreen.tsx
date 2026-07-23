@@ -113,6 +113,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
   const visibleTabs = TABS.filter((t) => {
     if (t === 'cotacao' && !isGestao) return false;
     if (t === 'compra' && !isGestao && !req.purchases?.length) return false;
+    if (t === 'trajeto' && req.request_type === 'hospedagem') return false;
     if (t === 'hospedagem' && !req.accommodations?.length) return false;
     if (t === 'bagagem' && !req.baggage?.length) return false;
     if (t === 'adiantamento' && !req.advance) return false;
@@ -132,7 +133,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
             <span className="font-mono">{req.request_number}</span>
           </div>
           <h1 className="text-lg font-semibold text-gray-900">
-            {req.segments?.[0]?.origin ?? '—'} → {req.segments?.[0]?.destination ?? '—'}
+            {req.request_type === 'hospedagem' ? `Hospedagem em ${req.accommodations?.[0]?.city ?? '—'}` : `${req.segments?.[0]?.origin ?? '—'} → ${req.segments?.[0]?.destination ?? '—'}`}
           </h1>
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <Badge className={STATUS_STYLES[req.status]}>{STATUS_LABELS[req.status]}</Badge>
@@ -159,7 +160,7 @@ export function RequestDetailScreen({ id }: { id: string }) {
             <ConformityItem ok={req.deadline_status !== 'fora'} label={`Prazo: ${DEADLINE_LABELS[req.deadline_status]}`} />
             <ConformityItem ok={true} label={`Viagem: ${req.international ? 'internacional' : 'nacional'}`} />
             <ConformityItem ok={true} label={`Terceiro: ${req.travelers?.some((t) => t.traveler?.traveler_type === 'terceiro') ? 'envolvido' : 'não'}`} warn={req.travelers?.some((t) => t.traveler?.traveler_type === 'terceiro')} />
-            <ConformityItem ok={true} label={`Bagagem especial: ${req.baggage?.length ? 'informada' : 'não'}`} warn={!!req.baggage?.length} />
+            {req.request_type !== 'hospedagem' && <ConformityItem ok={true} label={`Bagagem especial: ${req.baggage?.length ? 'informada' : 'não'}`} warn={!!req.baggage?.length} />}
             <ConformityItem ok={true} label={`Adiantamento: ${req.advance?.needed ? 'solicitado' : 'não'}`} />
             <ConformityItem ok={req.justification_confirmed || req.deadline_status !== 'fora'} label={`Justificativa: ${req.justification ? 'registrada' : 'não aplicável'}`} />
           </div>
@@ -383,7 +384,7 @@ function StatusSelect({ current, onChange }: { current: RequestStatus; onChange:
 function QuotationTab({ req, onChange }: { req: RequestWithRelations; onChange: () => void }) {
   const { profile } = useAuth();
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<'aerea' | 'rodoviaria' | 'hospedagem'>('aerea');
+  const [type, setType] = useState<'aerea' | 'rodoviaria' | 'hospedagem'>(req.request_type === 'hospedagem' ? 'hospedagem' : 'aerea');
   const [supplier, setSupplier] = useState('');
   const [value, setValue] = useState('');
   const [notes, setNotes] = useState('');
@@ -431,9 +432,9 @@ function QuotationTab({ req, onChange }: { req: RequestWithRelations; onChange: 
         <div className="space-y-3">
           <Field label="Tipo" required>
             <Select value={type} onChange={(e) => setType(e.target.value as any)}>
-              <option value="aerea">Aérea</option>
-              <option value="rodoviaria">Rodoviária</option>
-              <option value="hospedagem">Hospedagem</option>
+              {req.request_type !== 'hospedagem' && <option value="aerea">Aérea</option>}
+              {req.request_type !== 'hospedagem' && <option value="rodoviaria">Rodoviária</option>}
+              {req.request_type !== 'passagem' && <option value="hospedagem">Hospedagem</option>}
             </Select>
           </Field>
           <Field label="Fornecedor / agência">
